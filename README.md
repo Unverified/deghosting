@@ -41,7 +41,7 @@ Run `just` with no arguments to list all available recipes.
 ## Testing
 
 Tests use Go's standard `testing` package. Prefer table-driven tests with named
-cases, keep CLI tests close to the `run(ctx, args, stdout, stderr)` entrypoint,
+cases, keep CLI tests close to the `run(args, stdin, stdout, stderr)` entrypoint,
 and reserve shelling out for behavior that cannot be covered in-process. Run
 `just test` for normal changes and `just test-race` when touching concurrency,
 shared state, or I/O-heavy code.
@@ -49,7 +49,8 @@ shared state, or I/O-heavy code.
 ## Project layout
 
 ```
-cmd/cli/        CLI entrypoint
+cmd/deghosting/ CLI entrypoint
+internal/cli/   CLI parsing and execution boundary
 ```
 
 ## License

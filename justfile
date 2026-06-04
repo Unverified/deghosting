@@ -1,7 +1,7 @@
 #!/usr/bin/env -S just --justfile
 
 binary := "deghosting"
-pkg := "./cmd/cli"
+pkg := "./cmd/deghosting"
 bin_dir := "bin"
 
 # List available recipes

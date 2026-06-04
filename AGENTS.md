@@ -2,15 +2,15 @@
 
 ## Project Structure & Module Organization
 
-This repository is an early Go CLI scaffold for `deghosting`. The executable entrypoint lives in `cmd/cli/main.go`, with the binary built to `bin/deghosting`. Keep command-line wiring in `cmd/cli`; move reusable domain logic into new internal packages as functionality grows, for example `internal/deghosting` or `internal/config`. Add tests beside the package they cover using Go's `*_test.go` convention. Do not commit generated binaries or other `bin/` artifacts.
+This repository is an early Go CLI scaffold for `deghosting`. The executable entrypoint lives in `cmd/deghosting/main.go`, with the binary built to `bin/deghosting`. Keep command-line wiring in `cmd/deghosting` and the `internal/cli` package; move reusable domain logic into new internal packages as functionality grows, for example `internal/deghosting` or `internal/config`. Add tests beside the package they cover using Go's `*_test.go` convention. Do not commit generated binaries or other `bin/` artifacts.
 
 ## Build, Test, and Development Commands
 
 Use `just` as the task runner. Run `just` to list recipes.
 
 - `nix develop`: enter the optional dev shell with Go, `just`, `golangci-lint`, and editor tooling.
-- `just build`: compile `./cmd/cli` into `./bin/deghosting`.
-- `just run -- [args...]`: run the CLI locally and pass through arguments.
+- `just build`: compile `./cmd/deghosting` into `./bin/deghosting`.
+- `just run [args...]`: run the CLI locally and pass through arguments.
 - `just test`: run `go test ./...`.
 - `just test-race`: run tests with race detection and coverage.
 - `just fmt-check`: show formatting diffs without writing.
@@ -21,7 +21,7 @@ Use `just` as the task runner. Run `just` to list recipes.
 
 ## Coding Style & Naming Conventions
 
-Target Go `1.26.4` as declared in `go.mod`. Format Go code with `golangci-lint fmt`, which includes `gofumpt` and `goimports`; use tabs as produced by `gofmt`. Keep package names short, lowercase, and singular where practical. Prefer explicit error handling, small functions, and dependency injection through parameters such as `context.Context` or `io.Writer`, matching the current `run(ctx, args, stdout, stderr)` pattern.
+Target Go `1.26.4` as declared in `go.mod`. Format Go code with `golangci-lint fmt`, which includes `gofumpt` and `goimports`; use tabs as produced by `gofmt`. Keep package names short, lowercase, and singular where practical. Prefer explicit error handling, small functions, and dependency injection through parameters such as `io.Writer`, matching the current `run(args, stdin, stdout, stderr)` pattern.
 
 ## Agent Skill Usage
 
@@ -29,11 +29,11 @@ Use the local Go skills when a task matches their scope. Start with `golang-how-
 
 ## Testing Guidelines
 
-Use Go's standard `testing` package unless a stronger need appears. Name test files `*_test.go` and test functions `TestName`. Prefer table-driven CLI tests with a `name` field for every case, and call `run(ctx, args, stdout, stderr)` instead of shelling out when possible. Test observable behavior and public contracts instead of implementation details; keep each test deterministic and independently runnable. Use `t.Parallel()` for isolated tests, separate integration tests with `//go:build integration`, and add `goleak` or `testing/synctest` when concurrent code needs leak checks or deterministic time. Run `just test` before submitting changes; use `just test-race` for concurrency, shared state, or I/O-heavy code.
+Use Go's standard `testing` package unless a stronger need appears. Prefer `github.com/stretchr/testify/require` for assertions so tests fail immediately after unmet preconditions. Name test files `*_test.go` and test functions `TestName`. Prefer table-driven CLI tests with a `name` field for every case, and call `run(args, stdin, stdout, stderr)` instead of shelling out when possible. Test observable behavior and public contracts instead of implementation details; keep each test deterministic and independently runnable. Use `t.Parallel()` for isolated tests, separate integration tests with `//go:build integration`, and add `goleak` or `testing/synctest` when concurrent code needs leak checks or deterministic time. Run `just test` before submitting changes; use `just test-race` for concurrency, shared state, or I/O-heavy code.
 
 ## Commit & Pull Request Guidelines
 
-The repository currently has only an initial commit, so follow a simple imperative style: `Add CLI argument parsing`, `Fix config loading`, `Document build workflow`. Keep commits focused and include tests or docs with the behavior they support. Pull requests should explain the change, list verification commands run, link related issues, and include terminal output or screenshots when user-visible CLI behavior changes.
+Follow a simple imperative style for commit messages: `Add CLI argument parsing`, `Fix config loading`, `Document build workflow`. Keep commits focused and include tests or docs with the behavior they support. Pull requests should explain the change, list verification commands run, link related issues, and include terminal output or screenshots when user-visible CLI behavior changes.
 
 ## Security & Configuration Tips
 
