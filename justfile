@@ -4,6 +4,10 @@ binary := "deghosting"
 pkg := "./cmd/deghosting"
 bin_dir := "bin"
 
+# encoding/json/v2 and encoding/json/jsontext are gated behind this experiment
+# in Go 1.26. Exported so every recipe's go/golangci-lint invocation sees it.
+export GOEXPERIMENT := "jsonv2"
+
 # List available recipes
 default:
     @just --list

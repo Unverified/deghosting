@@ -34,6 +34,10 @@
         { pkgs }:
         {
           default = pkgs.mkShell {
+            # encoding/json/v2 and encoding/json/jsontext are gated behind this
+            # experiment in Go 1.26, so gopls and golangci-lint need it set too.
+            GOEXPERIMENT = "jsonv2";
+
             packages = with pkgs; [
               # go hot reloading
               air
