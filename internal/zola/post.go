@@ -27,22 +27,32 @@ func (p Post) MarkdownPath() string {
 
 // FrontMatter is the Zola TOML front matter for a generated post.
 type FrontMatter struct {
-	Title       string
-	Date        time.Time
-	Description string
-	Authors     []string
-	Taxonomies  Taxonomies
-	Extra       Extra
+	Title       string     `toml:"title"`
+	Date        time.Time  `toml:"date"`
+	Description string     `toml:"description,omitempty"`
+	Authors     []string   `toml:"authors,omitempty"`
+	Taxonomies  Taxonomies `toml:"taxonomies,omitempty"`
+	Extra       Extra      `toml:"extra,omitempty"`
 }
 
 // Taxonomies groups Zola taxonomy assignments.
 type Taxonomies struct {
-	Tags []string
+	Tags []string `toml:"tags,omitempty"`
+}
+
+// IsZero reports whether t contains no taxonomy assignments.
+func (t Taxonomies) IsZero() bool {
+	return len(t.Tags) == 0
 }
 
 // Extra holds theme-specific Zola front matter.
 type Extra struct {
-	FeatureImage string
+	FeatureImage string `toml:"feature_image,omitempty"`
+}
+
+// IsZero reports whether e contains no theme-specific front matter.
+func (e Extra) IsZero() bool {
+	return e.FeatureImage == ""
 }
 
 // ImageRef is an unresolved image reference found while modeling a post.

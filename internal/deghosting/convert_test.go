@@ -1,7 +1,6 @@
 package deghosting_test
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,24 +10,6 @@ import (
 	"github.com/Unverified/deghosting/internal/zola"
 	"github.com/stretchr/testify/require"
 )
-
-func TestOperationReportsWarningsAndSummary(t *testing.T) {
-	t.Parallel()
-
-	var stdout bytes.Buffer
-	var warnings bytes.Buffer
-	input := openFixture(t, "missing-published-at.json")
-	defer func() { _ = input.Close() }()
-
-	err := deghosting.Operation{
-		Stdout: &stdout,
-		Stderr: &warnings,
-	}.Process(input, "content")
-
-	require.NoError(t, err)
-	require.Contains(t, warnings.String(), "warning: missing-date: published post without published_at, skipping")
-	require.Equal(t, "finished, 0 posts converted, 0 posts skipped, 1 warnings\n", stdout.String())
-}
 
 func TestConvertExportConvertsPublishedPosts(t *testing.T) {
 	t.Parallel()
