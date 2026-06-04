@@ -24,9 +24,9 @@ Posts are converted.
 _Avoid_: state
 
 **Slug**:
-A Post's URL path. It is also the filename of the Markdown file we generate for
-that Post.
-_Avoid_: permalink, path, id
+A Post's URL path. It is also the directory name for the generated Markdown file
+and any colocated assets for that Post.
+_Avoid_: permalink, path, id, filename
 
 **Tag**:
 A label a Post is filed under. A Tag is reused across many Posts.
@@ -47,10 +47,24 @@ _Avoid_: summary, description (in the output, "description" is the front-matter 
 A Post's hero image.
 _Avoid_: cover, banner, thumbnail
 
+**Read time**:
+An estimated number of minutes needed to read a Post.
+_Avoid_: reading time, time to read
+
 **Front matter**:
 The TOML metadata block at the top of a generated Markdown file (title, date,
 description, tags), consumed by the static site generator.
 _Avoid_: header, preamble, metadata
+
+**Markdown body**:
+The CommonMark-compatible content after the front matter in a generated Markdown
+file, converted from a Post's rendered HTML.
+_Avoid_: content, body (without "Markdown")
+
+**Post bundle**:
+The generated directory named from a Post's Slug, containing that Post's
+`index.md` file and any colocated assets.
+_Avoid_: folder, page bundle (unless referring specifically to Zola)
 
 **Markdown content tree**:
 The directory of Markdown files generated from a Ghost export, one file per
@@ -68,9 +82,10 @@ _Avoid_: SSG, site builder
 - A **Post** has zero or more **Tags** and one or more **Authors**
   (many-to-many). In the export these links live in separate join tables, even
   though Ghost's API nests related resources inside the Post.
-- A **Post**'s **Slug** becomes the filename of its **Markdown** file.
+- A **Post**'s **Slug** becomes the directory name for its generated
+  **Post bundle**.
 - Each **Markdown** file has **Front matter** derived from a **Post**'s metadata,
-  plus a body converted from the Post's HTML.
+  plus a **Markdown body** converted from the Post's HTML.
 - Only **Published** **Posts** enter the **Markdown content tree**; **Drafts** are
   skipped.
 

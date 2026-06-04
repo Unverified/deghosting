@@ -24,6 +24,8 @@ const sampleExport = `{
             "html": "<p>hi</p>",
             "custom_excerpt": "A greeting.",
             "feature_image": "__GHOST_URL__/img.png",
+            "og_image": "__GHOST_URL__/og.png",
+            "twitter_image": "__GHOST_URL__/twitter.png",
             "status": "published",
             "type": "post",
             "visibility": "public",
@@ -36,6 +38,8 @@ const sampleExport = `{
             "html": "",
             "custom_excerpt": null,
             "feature_image": null,
+            "og_image": null,
+            "twitter_image": null,
             "status": "draft",
             "type": "post",
             "visibility": "public",
@@ -94,6 +98,9 @@ func TestParsePublishedPost(t *testing.T) {
 	require.Equal(t, "Hello World", p.Title)
 	require.Equal(t, "<p>hi</p>", p.HTML)
 	require.Equal(t, "A greeting.", p.CustomExcerpt)
+	require.Equal(t, "__GHOST_URL__/img.png", p.FeatureImage)
+	require.Equal(t, "__GHOST_URL__/og.png", p.OGImage)
+	require.Equal(t, "__GHOST_URL__/twitter.png", p.TwitterImage)
 	require.Equal(t, "published", p.Status)
 	require.False(t, p.PublishedAt.IsZero())
 	require.Equal(t, "2020-05-19", p.PublishedAt.Format("2006-01-02"))
@@ -125,6 +132,8 @@ func TestParseDraftNullsDecodeToZeroValues(t *testing.T) {
 	require.Equal(t, "draft", p.Status)
 	require.Empty(t, p.CustomExcerpt, "null custom_excerpt decodes to empty string")
 	require.Empty(t, p.FeatureImage, "null feature_image decodes to empty string")
+	require.Empty(t, p.OGImage, "null og_image decodes to empty string")
+	require.Empty(t, p.TwitterImage, "null twitter_image decodes to empty string")
 	require.True(t, p.PublishedAt.IsZero(), "null published_at decodes to the zero Time")
 }
 

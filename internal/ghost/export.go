@@ -50,13 +50,17 @@ type Post struct {
 	// HTML is the rendered post body — the primary content to convert.
 	HTML string `json:"html"`
 
-	// CustomExcerpt is the post's hand-written summary. It is null for drafts and
+	// CustomExcerpt is the post's handwritten summary. It is null for drafts and
 	// any post without a custom excerpt, decoding to "".
 	CustomExcerpt string `json:"custom_excerpt"`
 
 	// FeatureImage is the hero image URL; null (→ "") when unset. Ghost rewrites
 	// site-relative URLs to a "__GHOST_URL__" placeholder.
 	FeatureImage string `json:"feature_image"`
+	// OGImage is the Open Graph social preview image URL; null (→ "") when unset.
+	OGImage string `json:"og_image"`
+	// TwitterImage is the Twitter/X social preview image URL; null (→ "") when unset.
+	TwitterImage string `json:"twitter_image"`
 
 	// Status is "published" or "draft"; Type is "post" or "page".
 	Status string `json:"status"`
