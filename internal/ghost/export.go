@@ -1,5 +1,11 @@
 package ghost
 
+import (
+	"encoding/json/v2"
+	"fmt"
+	"io"
+)
+
 // Export is the root object of a Ghost export file. Ghost wraps everything in a
 // single-element "db" array; the meaningful payload lives in DB[0].
 type Export struct {
@@ -20,13 +26,15 @@ type Meta struct {
 }
 
 // Data holds the exported tables. Ghost stores many-to-many relationships (such
-// as a post's tags) in separate join tables, so resolving a post's tags means
-// joining Posts → PostsTags → Tags by ID.
+// as a post's tags and authors) in separate join tables, so resolving a post's
+// related records means joining by ID.
 type Data struct {
-	Posts     []Post     `json:"posts"`
-	Tags      []Tag      `json:"tags"`
-	PostsTags []PostTag  `json:"posts_tags"`
-	PostsMeta []PostMeta `json:"posts_meta"`
+	Posts        []Post       `json:"posts"`
+	Tags         []Tag        `json:"tags"`
+	Users        []User       `json:"users"`
+	PostsTags    []PostTag    `json:"posts_tags"`
+	PostsAuthors []PostAuthor `json:"posts_authors"`
+	PostsMeta    []PostMeta   `json:"posts_meta"`
 }
 
 // Post is a single blog entry. The rendered article lives in HTML; the other
@@ -70,11 +78,26 @@ type Tag struct {
 	Slug string `json:"slug"`
 }
 
+// User is a Ghost staff user who may be credited as a post author.
+type User struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Slug  string `json:"slug"`
+	Email string `json:"email"`
+}
+
 // PostTag joins a post to a tag. SortOrder preserves the author's tag ordering;
 // the first tag (SortOrder 0) is Ghost's "primary tag".
 type PostTag struct {
 	PostID    string `json:"post_id"`
 	TagID     string `json:"tag_id"`
+	SortOrder int    `json:"sort_order"`
+}
+
+// PostAuthor joins a post to a user credited as an author.
+type PostAuthor struct {
+	PostID    string `json:"post_id"`
+	AuthorID  string `json:"author_id"`
 	SortOrder int    `json:"sort_order"`
 }
 
@@ -84,4 +107,20 @@ type PostTag struct {
 type PostMeta struct {
 	PostID          string `json:"post_id"`
 	MetaDescription string `json:"meta_description"`
+}
+
+// Parse reads a Ghost JSON export from r and decodes it into an Export. It does
+// not interpret or transform the content; callers get the raw export structure
+// to work with. A malformed-but-valid export (missing fields, null values, or
+// sparse join tables) decodes successfully, with absent data left as zero values.
+func Parse(r io.Reader) (*Export, error) {
+	var export Export
+	if err := json.UnmarshalRead(r, &export); err != nil {
+		return nil, fmt.Errorf("decode ghost export: %w", err)
+	}
+	if len(export.DB) != 1 {
+		return nil, fmt.Errorf("decode ghost export: expected exactly one db entry, got %d", len(export.DB))
+	}
+
+	return &export, nil
 }

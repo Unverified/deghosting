@@ -32,6 +32,11 @@ _Avoid_: permalink, path, id
 A label a Post is filed under. A Tag is reused across many Posts.
 _Avoid_: category, label, topic
 
+**Author**:
+A Ghost staff user credited on a Post. We collect the Author's display name and
+email from the Ghost export's `users` table.
+_Avoid_: user (unless discussing the raw export table), writer
+
 **Excerpt**:
 A Post's short hand-written summary (Ghost's `custom_excerpt`). Becomes the
 `description` in generated front matter, falling back to the Post's SEO meta
@@ -60,9 +65,9 @@ _Avoid_: SSG, site builder
 ## Relationships
 
 - A **Ghost export** contains many **Posts** and many **Tags**.
-- A **Post** has zero or more **Tags** (many-to-many). In the export this link
-  lives in a separate join table, even though Ghost's API nests Tags inside the
-  Post.
+- A **Post** has zero or more **Tags** and one or more **Authors**
+  (many-to-many). In the export these links live in separate join tables, even
+  though Ghost's API nests related resources inside the Post.
 - A **Post**'s **Slug** becomes the filename of its **Markdown** file.
 - Each **Markdown** file has **Front matter** derived from a **Post**'s metadata,
   plus a body converted from the Post's HTML.

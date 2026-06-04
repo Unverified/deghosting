@@ -9,8 +9,8 @@ import (
 )
 
 // sampleExport mirrors the shapes seen in a real Ghost export: a published post
-// with full fields, a draft with null published_at and null custom_excerpt, a
-// tag join table, and a posts_meta table that does not cover every post.
+// with full fields, a draft with null published_at and null custom_excerpt, tag
+// and author join tables, and a posts_meta table that does not cover every post.
 const sampleExport = `{
   "db": [
     {
@@ -46,9 +46,17 @@ const sampleExport = `{
           {"id": "t1", "name": "Announcements", "slug": "announcements"},
           {"id": "t2", "name": "Adopters", "slug": "adopters"}
         ],
+        "users": [
+          {"id": "u1", "name": "Ada Lovelace", "slug": "ada", "email": "ada@example.com"},
+          {"id": "u2", "name": "Grace Hopper", "slug": "grace", "email": "grace@example.com"}
+        ],
         "posts_tags": [
           {"post_id": "p1", "tag_id": "t2", "sort_order": 1},
           {"post_id": "p1", "tag_id": "t1", "sort_order": 0}
+        ],
+        "posts_authors": [
+          {"post_id": "p1", "author_id": "u1", "sort_order": 0},
+          {"post_id": "p1", "author_id": "u2", "sort_order": 1}
         ],
         "posts_meta": [
           {"post_id": "p1", "meta_description": "SEO blurb."}
@@ -69,7 +77,9 @@ func TestParse(t *testing.T) {
 	require.Equal(t, "5.95.0", db.Meta.Version)
 	require.Len(t, db.Data.Posts, 2)
 	require.Len(t, db.Data.Tags, 2)
+	require.Len(t, db.Data.Users, 2)
 	require.Len(t, db.Data.PostsTags, 2)
+	require.Len(t, db.Data.PostsAuthors, 2)
 	require.Len(t, db.Data.PostsMeta, 1, "posts_meta is sparse: not every post has a row")
 }
 
@@ -87,6 +97,22 @@ func TestParsePublishedPost(t *testing.T) {
 	require.Equal(t, "published", p.Status)
 	require.False(t, p.PublishedAt.IsZero())
 	require.Equal(t, "2020-05-19", p.PublishedAt.Format("2006-01-02"))
+}
+
+func TestParseAuthors(t *testing.T) {
+	t.Parallel()
+
+	export, err := ghost.Parse(strings.NewReader(sampleExport))
+	require.NoError(t, err)
+
+	db := export.DB[0]
+	require.Equal(t, "Ada Lovelace", db.Data.Users[0].Name)
+	require.Equal(t, "ada@example.com", db.Data.Users[0].Email)
+	require.Equal(t, ghost.PostAuthor{
+		PostID:    "p1",
+		AuthorID:  "u1",
+		SortOrder: 0,
+	}, db.Data.PostsAuthors[0])
 }
 
 func TestParseDraftNullsDecodeToZeroValues(t *testing.T) {
@@ -108,6 +134,34 @@ func TestParseInvalidJSON(t *testing.T) {
 	_, err := ghost.Parse(strings.NewReader("{not json"))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "decode ghost export")
+}
+
+func TestParseRequiresExactlyOneDatabase(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "empty db array",
+			input: `{"db":[]}`,
+		},
+		{
+			name:  "multiple db entries",
+			input: `{"db":[{},{}]}`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ghost.Parse(strings.NewReader(tc.input))
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "expected exactly one db entry")
+		})
+	}
 }
 
 func TestParseBadTimestampErrors(t *testing.T) {

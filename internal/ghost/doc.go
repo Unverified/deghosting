@@ -1,8 +1,9 @@
 // Package ghost models the subset of a Ghost JSON export that deghosting needs
 // to produce Markdown content. It captures only the fields that drive the
 // generated output — Post (html, slug, title, custom_excerpt, feature_image,
-// dates, status), Tag, the posts_tags join, and meta_description — and ignores
-// the rest of the export (members, settings, Stripe, snippets, newsletters).
+// dates, status), Tag, User author records, the posts_tags/posts_authors joins,
+// and meta_description — and ignores the rest of the export (members, settings,
+// Stripe, snippets, newsletters).
 //
 // See https://ghost.org/help/exports/ for how the input is produced and
 // https://docs.ghost.org/admin-api/posts/overview for Post field semantics.
@@ -17,6 +18,7 @@
 //   - custom_excerpt and feature_image are null on some posts, decoding to "".
 //   - posts_meta is sparse (449 rows for 518 posts); the tag and meta joins must
 //     tolerate a missing row.
+//   - Post authors live in the users table and are related through posts_authors.
 //   - status is trustworthy: filtering published vs draft matches what is live.
 //
 // # Deferred to transformation, not parsing
