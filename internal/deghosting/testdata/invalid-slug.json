@@ -1,0 +1,19 @@
+{
+  "db": [
+    {
+      "data": {
+        "posts": [
+          {
+            "id": "p1",
+            "slug": "../escape",
+            "title": "Bad Slug",
+            "html": "<p>body</p>",
+            "status": "published",
+            "type": "post",
+            "published_at": "2020-05-19 12:03:00"
+          }
+        ]
+      }
+    }
+  ]
+}

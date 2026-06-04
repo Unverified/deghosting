@@ -32,6 +32,10 @@ _Avoid_: permalink, path, id, filename
 A label a Post is filed under. A Tag is reused across many Posts.
 _Avoid_: category, label, topic
 
+**Tag name**:
+The human-facing Tag text that becomes a generated taxonomy value.
+_Avoid_: tag slug, tag ID
+
 **Author**:
 A Ghost staff user credited on a Post. We collect the Author's display name and
 email from the Ghost export's `users` table.
@@ -84,6 +88,8 @@ _Avoid_: SSG, site builder
   though Ghost's API nests related resources inside the Post.
 - A **Post**'s **Slug** becomes the directory name for its generated
   **Post bundle**.
+- A **Tag name** becomes the generated taxonomy value; a Tag's slug remains a
+  source identifier.
 - Each **Markdown** file has **Front matter** derived from a **Post**'s metadata,
   plus a **Markdown body** converted from the Post's HTML.
 - Only **Published** **Posts** enter the **Markdown content tree**; **Drafts** are

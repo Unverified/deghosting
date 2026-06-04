@@ -8,8 +8,8 @@ import (
 	"os"
 )
 
-// CLI describes the deghosting command line.
-type CLI struct {
+// Options describes the deghosting command line.
+type Options struct {
 	Input string `short:"i" name:"input" help:"Ghost export JSON file, or '-' for stdin."`
 	Out   string `short:"o" name:"out" default:"content" help:"Output content directory."`
 	Force bool   `short:"f" name:"force" help:"Allow writing into a non-empty output directory."`

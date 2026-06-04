@@ -32,11 +32,17 @@ type FrontMatter struct {
 	Description string
 	Authors     []string
 	Taxonomies  Taxonomies
+	Extra       Extra
 }
 
 // Taxonomies groups Zola taxonomy assignments.
 type Taxonomies struct {
 	Tags []string
+}
+
+// Extra holds theme-specific Zola front matter.
+type Extra struct {
+	FeatureImage string
 }
 
 // ImageRef is an unresolved image reference found while modeling a post.

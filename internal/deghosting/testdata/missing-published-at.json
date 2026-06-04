@@ -1,0 +1,19 @@
+{
+  "db": [
+    {
+      "data": {
+        "posts": [
+          {
+            "id": "p1",
+            "slug": "missing-date",
+            "title": "Missing Date",
+            "html": "<p>body</p>",
+            "status": "published",
+            "type": "post",
+            "published_at": null
+          }
+        ]
+      }
+    }
+  ]
+}

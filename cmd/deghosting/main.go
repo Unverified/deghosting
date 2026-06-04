@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/Unverified/deghosting/internal/cli"
+	"github.com/Unverified/deghosting/internal/deghosting"
 )
 
 func main() {
@@ -24,7 +25,18 @@ func run(
 	stdout io.Writer,
 	stderr io.Writer,
 ) int {
-	err := cli.Execute(args, stdin, stdout, stderr)
+	command := cli.CLI{
+		Stdin:  stdin,
+		Stdout: stdout,
+		Stderr: stderr,
+
+		Process: deghosting.Operation{
+			Stdout: stdout,
+			Stderr: stderr,
+		}.Process,
+	}
+
+	err := command.Execute(args)
 	return exitCode(err, stderr)
 }
 

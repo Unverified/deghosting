@@ -1,6 +1,8 @@
 package cli_test
 
 import (
+	"bytes"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -134,6 +136,75 @@ func TestValidateOutputDir(t *testing.T) {
 	})
 }
 
+func TestExecutePassesResolvedInputToProcess(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	file := filepath.Join(dir, "ghost.json")
+
+	expectInput := "stdin-data"
+	expectOutput := "file-data"
+
+	writeFileContent(t, file, expectOutput)
+
+	var stdout bytes.Buffer
+
+	command := cli.CLI{
+		Stdin:  cli.InputStream{Reader: strings.NewReader(expectInput), IsTerminal: true},
+		Stdout: &stdout,
+		Stderr: io.Discard,
+		Process: func(export io.Reader, out string) error {
+			require.Equal(t, dir, out)
+
+			got, err := io.ReadAll(export)
+			require.NoError(t, err)
+			require.Equal(t, expectOutput, string(got))
+
+			return nil
+		},
+	}
+
+	err := command.Execute([]string{"--input", file, "--out", dir, "--force"})
+	require.NoError(t, err)
+	require.Empty(t, stdout.String())
+}
+
+func TestExecutePropagatesProcessError(t *testing.T) {
+	t.Parallel()
+
+	want := errors.New("process failed")
+	command := cli.CLI{
+		Stdin:  cli.InputStream{Reader: strings.NewReader("stdin-data"), IsTerminal: false},
+		Stdout: io.Discard,
+		Stderr: io.Discard,
+		Process: func(io.Reader, string) error {
+			return want
+		},
+	}
+
+	err := command.Execute(nil)
+
+	require.ErrorIs(t, err, want)
+}
+
+func TestExecuteMapsParseErrorsToUsageError(t *testing.T) {
+	t.Parallel()
+
+	command := cli.CLI{
+		Stdin:  cli.InputStream{Reader: strings.NewReader(""), IsTerminal: true},
+		Stdout: io.Discard,
+		Stderr: io.Discard,
+		Process: func(io.Reader, string) error {
+			t.Fatal("process should not be called for parse errors")
+			return nil
+		},
+	}
+	err := command.Execute([]string{"--definitely-not-a-flag"})
+
+	var usageErr *cli.UsageError
+	require.ErrorAs(t, err, &usageErr)
+}
+
 // panicReader fails the test if anything tries to read from it.
 type panicReader struct{}
 
@@ -141,35 +212,35 @@ func (panicReader) Read([]byte) (int, error) {
 	panic("input was read before output validation")
 }
 
-func TestExecuteValidatesOutputBeforeReadingInput(t *testing.T) {
+func TestExecuteValidatesOutputBeforeProcessing(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "existing.md"))
 
-	// No --input and a non-terminal stdin would resolve input to "-", so a
-	// failing output dir must be rejected before the stdin reader is touched.
-	err := cli.Execute(
-		[]string{"-o", dir},
-		cli.InputStream{Reader: panicReader{}},
-		io.Discard,
-		io.Discard,
-	)
+	command := cli.CLI{
+		Stdin:  cli.InputStream{Reader: panicReader{}, IsTerminal: false},
+		Stdout: io.Discard,
+		Stderr: io.Discard,
+		Process: func(io.Reader, string) error {
+			t.Fatal("process should not be called when output validation fails")
+			return nil
+		},
+	}
+
+	err := command.Execute([]string{"--out", dir})
+
 	require.Error(t, err)
 }
 
-func TestExecuteMapsParseErrorsToUsageError(t *testing.T) {
+func TestExecuteRequiresProcessFunction(t *testing.T) {
 	t.Parallel()
 
-	err := cli.Execute(
-		[]string{"--definitely-not-a-flag"},
-		cli.InputStream{Reader: strings.NewReader(""), IsTerminal: true},
-		io.Discard,
-		io.Discard,
-	)
+	err := cli.CLI{
+		Stdin: cli.InputStream{Reader: strings.NewReader("stdin-data"), IsTerminal: false},
+	}.Execute(nil)
 
-	var usageErr *cli.UsageError
-	require.ErrorAs(t, err, &usageErr)
+	require.ErrorContains(t, err, "process function is nil")
 }
 
 func writeFile(t *testing.T, path string) {

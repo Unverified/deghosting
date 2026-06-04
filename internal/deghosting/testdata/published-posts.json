@@ -1,0 +1,87 @@
+{
+  "db": [
+    {
+      "data": {
+        "posts": [
+          {
+            "id": "p1",
+            "slug": "hello-world",
+            "title": "Hello \"World\"",
+            "html": "<p>Hello <strong>Ghost</strong>.</p><img src=\"__GHOST_URL__/body-1.png\"><figure><img src=\"https://example.com/body-2.jpg\"></figure><img>",
+            "custom_excerpt": "A greeting.",
+            "feature_image": "__GHOST_URL__/feature.png",
+            "og_image": "__GHOST_URL__/og.png",
+            "twitter_image": "__GHOST_URL__/twitter.png",
+            "status": "published",
+            "type": "post",
+            "published_at": "2020-05-19 12:03:00"
+          },
+          {
+            "id": "p2",
+            "slug": "draft",
+            "title": "Draft",
+            "status": "draft",
+            "type": "post",
+            "published_at": null
+          },
+          {
+            "id": "p3",
+            "slug": "about",
+            "title": "About",
+            "status": "published",
+            "type": "page",
+            "published_at": "2020-05-20 12:03:00"
+          }
+        ],
+        "tags": [
+          {
+            "id": "t1",
+            "name": "Announcements",
+            "slug": "announcements"
+          },
+          {
+            "id": "t2",
+            "name": "Adopters",
+            "slug": "adopters"
+          }
+        ],
+        "users": [
+          {
+            "id": "u1",
+            "name": "Ada Lovelace",
+            "email": "ada@example.com"
+          },
+          {
+            "id": "u2",
+            "name": "Grace Hopper",
+            "email": "grace@example.com"
+          }
+        ],
+        "posts_tags": [
+          {
+            "post_id": "p1",
+            "tag_id": "t2",
+            "sort_order": 1
+          },
+          {
+            "post_id": "p1",
+            "tag_id": "t1",
+            "sort_order": 0
+          }
+        ],
+        "posts_authors": [
+          {
+            "post_id": "p1",
+            "author_id": "u2",
+            "sort_order": 1
+          },
+          {
+            "post_id": "p1",
+            "author_id": "u1",
+            "sort_order": 0
+          }
+        ]
+      }
+    }
+  ]
+}
