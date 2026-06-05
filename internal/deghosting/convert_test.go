@@ -41,13 +41,8 @@ func TestConvertExportConvertsPublishedPosts(t *testing.T) {
 		},
 	}, post.FrontMatter)
 	require.Equal(t, "2020-05-19T12:03:00Z", post.FrontMatter.Date.Format("2006-01-02T15:04:05Z07:00"))
-	require.ElementsMatch(t, []zola.ImageRef{
-		{Source: "__GHOST_URL__/feature.png", Kind: zola.ImageKindFeature},
-		{Source: "__GHOST_URL__/og.png", Kind: zola.ImageKindOpenGraph},
-		{Source: "__GHOST_URL__/twitter.png", Kind: zola.ImageKindTwitter},
-		{Source: "__GHOST_URL__/body-1.png", Kind: zola.ImageKindBody},
-		{Source: "https://example.com/body-2.jpg", Kind: zola.ImageKindBody},
-	}, post.Images)
+	// Assets are populated in the resolve+plan step; empty until then.
+	require.Empty(t, post.Assets)
 }
 
 func TestConvertExportUsesMetaDescriptionFallback(t *testing.T) {
@@ -59,7 +54,7 @@ func TestConvertExportUsesMetaDescriptionFallback(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, result.Posts, 1)
 	require.Equal(t, "SEO fallback.", result.Posts[0].FrontMatter.Description)
-	require.Empty(t, result.Posts[0].Images)
+	require.Empty(t, result.Posts[0].Assets)
 }
 
 func TestConvertExportSkipsPublishedPostWithoutPublishedAt(t *testing.T) {

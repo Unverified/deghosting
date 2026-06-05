@@ -11,7 +11,15 @@ type Post struct {
 	Slug        string
 	FrontMatter FrontMatter
 	Body        string
-	Images      []ImageRef
+	Assets      []ImageAsset
+}
+
+// ImageAsset is a Ghost-hosted image reference resolved to a remote URL and the
+// local path it is rewritten to, relative to the post bundle.
+type ImageAsset struct {
+	RemoteURL string
+	LocalPath string // e.g. "b58f0c2e-photo.jpg", relative to index.md
+	Kind      ImageKind
 }
 
 // BundleDir returns the post's bundle directory relative to the content root.
@@ -48,11 +56,13 @@ func (t Taxonomies) IsZero() bool {
 // Extra holds theme-specific Zola front matter.
 type Extra struct {
 	FeatureImage string `toml:"feature_image,omitempty"`
+	OGImage      string `toml:"og_image,omitempty"`
+	TwitterImage string `toml:"twitter_image,omitempty"`
 }
 
 // IsZero reports whether e contains no theme-specific front matter.
 func (e Extra) IsZero() bool {
-	return e.FeatureImage == ""
+	return e.FeatureImage == "" && e.OGImage == "" && e.TwitterImage == ""
 }
 
 // ImageRef is an unresolved image reference found while modeling a post.

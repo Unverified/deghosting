@@ -15,8 +15,10 @@ type Operation struct {
 	writePosts writePostsFunc
 }
 
-type convertFunc func(io.Reader) (ConvertResult, error)
-type writePostsFunc func(string, []zola.Post) error
+type (
+	convertFunc    func(io.Reader) (ConvertResult, error)
+	writePostsFunc func(string, []zola.Post) error
+)
 
 // Process converts the Ghost export, writes generated files, and reports
 // warnings and a summary.

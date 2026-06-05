@@ -170,8 +170,7 @@ func (c *exportConverter) convertPost(post ghost.Post) (zola.Post, error) {
 				FeatureImage: post.FeatureImage,
 			},
 		},
-		Body:   strings.TrimSpace(body),
-		Images: imageRefs(post),
+		Body: strings.TrimSpace(body),
 	}
 	return res, nil
 }

@@ -3,6 +3,7 @@ package zola_test
 import (
 	"bytes"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -35,22 +36,116 @@ func TestPostMarkdown(t *testing.T) {
 	err := post.Markdown(&got)
 
 	require.NoError(t, err)
-	want := `+++
-title = 'Hello "World"'
-date = 2020-05-19T12:03:00Z
-description = 'A greeting.'
-authors = ['Ada Lovelace', 'Grace Hopper']
-
-[taxonomies]
-tags = ['Announcements', 'Adopters']
-
-[extra]
-feature_image = '__GHOST_URL__/feature.png'
-+++
-
-Hello **Ghost**
-`
+	want := strings.Join([]string{
+		"+++",
+		`title = 'Hello "World"'`,
+		"date = 2020-05-19T12:03:00Z",
+		"description = 'A greeting.'",
+		"authors = ['Ada Lovelace', 'Grace Hopper']",
+		"",
+		"[taxonomies]",
+		"tags = ['Announcements', 'Adopters']",
+		"",
+		"[extra]",
+		"feature_image = '__GHOST_URL__/feature.png'",
+		"+++",
+		"",
+		"Hello **Ghost**",
+		"",
+	}, "\n")
 	require.Equal(t, want, got.String())
+}
+
+func TestPostMarkdownSocialImageExtras(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name  string
+		extra zola.Extra
+		want  string
+	}{
+		{
+			name:  "all three extras",
+			extra: zola.Extra{FeatureImage: "a.jpg", OGImage: "b.jpg", TwitterImage: "c.jpg"},
+			want: strings.Join([]string{
+				"[extra]",
+				"feature_image = 'a.jpg'",
+				"og_image = 'b.jpg'",
+				"twitter_image = 'c.jpg'",
+				"",
+			}, "\n"),
+		},
+		{
+			name:  "og only",
+			extra: zola.Extra{OGImage: "b.jpg"},
+			want: strings.Join([]string{
+				"[extra]",
+				"og_image = 'b.jpg'",
+				"",
+			}, "\n"),
+		},
+		{
+			name:  "twitter only",
+			extra: zola.Extra{TwitterImage: "c.jpg"},
+			want: strings.Join([]string{
+				"[extra]",
+				"twitter_image = 'c.jpg'",
+				"",
+			}, "\n"),
+		},
+		{
+			name:  "none — no extra block",
+			extra: zola.Extra{},
+			want:  "",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			post := zola.Post{
+				Slug: "test",
+				FrontMatter: zola.FrontMatter{
+					Title: "Test",
+					Date:  time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+					Extra: tc.extra,
+				},
+			}
+
+			var got bytes.Buffer
+			require.NoError(t, post.Markdown(&got))
+
+			if tc.want == "" {
+				require.NotContains(t, got.String(), "[extra]")
+			} else {
+				require.Contains(t, got.String(), tc.want)
+			}
+		})
+	}
+}
+
+func TestExtraIsZero(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name  string
+		extra zola.Extra
+		want  bool
+	}{
+		{"all empty", zola.Extra{}, true},
+		{"feature only", zola.Extra{FeatureImage: "a.jpg"}, false},
+		{"og only", zola.Extra{OGImage: "b.jpg"}, false},
+		{"twitter only", zola.Extra{TwitterImage: "c.jpg"}, false},
+		{"all set", zola.Extra{FeatureImage: "a.jpg", OGImage: "b.jpg", TwitterImage: "c.jpg"}, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc.want, tc.extra.IsZero())
+		})
+	}
 }
 
 func TestPostMarkdownOmitsEmptyOptionalFrontMatter(t *testing.T) {
@@ -68,12 +163,13 @@ func TestPostMarkdownOmitsEmptyOptionalFrontMatter(t *testing.T) {
 	err := post.Markdown(&got)
 
 	require.NoError(t, err)
-	want := `+++
-title = 'Hello World'
-date = 2020-05-19T12:03:00Z
-+++
-
-`
+	want := strings.Join([]string{
+		"+++",
+		"title = 'Hello World'",
+		"date = 2020-05-19T12:03:00Z",
+		"+++",
+		"",
+	}, "\n")
 	require.Equal(t, want, got.String())
 }
 

@@ -51,6 +51,12 @@ _Avoid_: summary, description (in the output, "description" is the front-matter 
 A Post's hero image.
 _Avoid_: cover, banner, thumbnail
 
+**Social image**:
+A Post's Open Graph (`og_image`) or Twitter (`twitter_image`) preview image. Each
+is downloaded and emitted as its own front-matter extra; on a typical Ghost blog
+both equal the Feature image and resolve to the same Downloaded asset.
+_Avoid_: share image, preview, card image
+
 **Read time**:
 An estimated number of minutes needed to read a Post.
 _Avoid_: reading time, time to read
@@ -79,6 +85,27 @@ _Avoid_: output, content folder
 Software that builds a static website from source content files.
 [Zola](https://www.getzola.org/) is deghosting's target generator.
 _Avoid_: SSG, site builder
+
+**Ghost URL**:
+The site origin that Ghost substitutes for the `__GHOST_URL__` placeholder it
+writes into exported image URLs and site-relative paths. Deghosting takes it as a
+required CLI value (no value is reliably present in the export to fall back to)
+and uses it to turn placeholders and relative paths into fetchable URLs.
+_Avoid_: base URL, site URL, host
+
+**Image reference**:
+An unresolved image location found in a Post — its Feature image, social images,
+or an `<img src>` in the Markdown body. A reference is _Ghost-hosted_ when it is a
+`__GHOST_URL__` placeholder, a site-relative path, or an absolute URL whose origin
+is the Ghost URL; otherwise it is _external_. Only Ghost-hosted references are
+downloaded and rewritten.
+_Avoid_: image URL, src, link
+
+**Downloaded asset**:
+An image file fetched from a resolved Ghost-hosted Image reference and written
+into the Post's Post bundle, beside `index.md`, that the reference is rewritten to
+point at. External references yield no asset and are left untouched.
+_Avoid_: attachment, media, download, colocated file
 
 ## Relationships
 
