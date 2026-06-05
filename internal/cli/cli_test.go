@@ -6,10 +6,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Unverified/deghosting/internal/cli"
+	"github.com/Unverified/deghosting/internal/deghosting"
 	"github.com/stretchr/testify/require"
 )
 
@@ -141,25 +144,19 @@ func TestExecutePassesResolvedInputToProcess(t *testing.T) {
 
 	dir := t.TempDir()
 	file := filepath.Join(dir, "ghost.json")
-
-	expectInput := "stdin-data"
-	expectOutput := "file-data"
-
-	writeFileContent(t, file, expectOutput)
+	writeFileContent(t, file, "file-data")
 
 	var stdout bytes.Buffer
 
 	command := cli.CLI{
-		Stdin:  cli.InputStream{Reader: strings.NewReader(expectInput), IsTerminal: true},
+		Stdin:  cli.InputStream{Reader: strings.NewReader("stdin-data"), IsTerminal: true},
 		Stdout: &stdout,
 		Stderr: io.Discard,
-		Process: func(export io.Reader, out string, ghostURL string) error {
+		Process: func(export io.Reader, out string, _ string, _ deghosting.DownloadConfig) error {
 			require.Equal(t, dir, out)
-
 			got, err := io.ReadAll(export)
 			require.NoError(t, err)
-			require.Equal(t, expectOutput, string(got))
-
+			require.Equal(t, "file-data", string(got))
 			return nil
 		},
 	}
@@ -167,6 +164,59 @@ func TestExecutePassesResolvedInputToProcess(t *testing.T) {
 	err := command.Execute([]string{"--input", file, "--out", dir, "--force"})
 	require.NoError(t, err)
 	require.Empty(t, stdout.String())
+}
+
+func TestExecutePassesGhostURLToProcess(t *testing.T) {
+	t.Parallel()
+
+	command := cli.CLI{
+		Stdin:  cli.InputStream{Reader: strings.NewReader("data"), IsTerminal: false},
+		Stdout: io.Discard,
+		Stderr: io.Discard,
+		Process: func(_ io.Reader, _ string, ghostURL string, _ deghosting.DownloadConfig) error {
+			require.Equal(t, "https://blog.example.com", ghostURL)
+			return nil
+		},
+	}
+
+	err := command.Execute([]string{"--ghost-url", "https://blog.example.com"})
+	require.NoError(t, err)
+}
+
+func TestExecuteImageFlagDefaults(t *testing.T) {
+	t.Parallel()
+
+	command := cli.CLI{
+		Stdin:  cli.InputStream{Reader: strings.NewReader("data"), IsTerminal: false},
+		Stdout: io.Discard,
+		Stderr: io.Discard,
+		Process: func(_ io.Reader, _ string, _ string, cfg deghosting.DownloadConfig) error {
+			require.Equal(t, 10*time.Second, cfg.Timeout)
+			require.Equal(t, runtime.NumCPU(), cfg.Concurrency)
+			return nil
+		},
+	}
+
+	err := command.Execute(nil)
+	require.NoError(t, err)
+}
+
+func TestExecuteImageFlagOverrides(t *testing.T) {
+	t.Parallel()
+
+	command := cli.CLI{
+		Stdin:  cli.InputStream{Reader: strings.NewReader("data"), IsTerminal: false},
+		Stdout: io.Discard,
+		Stderr: io.Discard,
+		Process: func(_ io.Reader, _ string, _ string, cfg deghosting.DownloadConfig) error {
+			require.Equal(t, 30*time.Second, cfg.Timeout)
+			require.Equal(t, 4, cfg.Concurrency)
+			return nil
+		},
+	}
+
+	err := command.Execute([]string{"--image-timeout", "30s", "--image-concurrency", "4"})
+	require.NoError(t, err)
 }
 
 func TestExecutePropagatesProcessError(t *testing.T) {
@@ -177,7 +227,7 @@ func TestExecutePropagatesProcessError(t *testing.T) {
 		Stdin:  cli.InputStream{Reader: strings.NewReader("stdin-data"), IsTerminal: false},
 		Stdout: io.Discard,
 		Stderr: io.Discard,
-		Process: func(io.Reader, string, string) error {
+		Process: func(io.Reader, string, string, deghosting.DownloadConfig) error {
 			return want
 		},
 	}
@@ -194,7 +244,7 @@ func TestExecuteMapsParseErrorsToUsageError(t *testing.T) {
 		Stdin:  cli.InputStream{Reader: strings.NewReader(""), IsTerminal: true},
 		Stdout: io.Discard,
 		Stderr: io.Discard,
-		Process: func(io.Reader, string, string) error {
+		Process: func(io.Reader, string, string, deghosting.DownloadConfig) error {
 			t.Fatal("process should not be called for parse errors")
 			return nil
 		},
@@ -222,7 +272,7 @@ func TestExecuteValidatesOutputBeforeProcessing(t *testing.T) {
 		Stdin:  cli.InputStream{Reader: panicReader{}, IsTerminal: false},
 		Stdout: io.Discard,
 		Stderr: io.Discard,
-		Process: func(io.Reader, string, string) error {
+		Process: func(io.Reader, string, string, deghosting.DownloadConfig) error {
 			t.Fatal("process should not be called when output validation fails")
 			return nil
 		},

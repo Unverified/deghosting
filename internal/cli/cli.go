@@ -5,13 +5,16 @@ package cli
 import (
 	"errors"
 	"io"
+	"runtime"
 
 	"github.com/alecthomas/kong"
+
+	"github.com/Unverified/deghosting/internal/deghosting"
 )
 
 // ProcessFunc runs the process after the CLI has parsed arguments and
 // resolved the export input stream.
-type ProcessFunc func(export io.Reader, out string, ghostURL string) error
+type ProcessFunc func(export io.Reader, out string, ghostURL string, cfg deghosting.DownloadConfig) error
 
 // CLI is the wired command-line application.
 type CLI struct {
@@ -60,5 +63,15 @@ func (c CLI) Execute(args []string) error {
 	}
 	defer func() { _ = input.Close() }()
 
-	return c.Process(input, options.Out, "")
+	concurrency := options.ImageConcurrency
+	if concurrency <= 0 {
+		concurrency = runtime.NumCPU()
+	}
+
+	cfg := deghosting.DownloadConfig{
+		Timeout:     options.ImageTimeout,
+		Concurrency: concurrency,
+	}
+
+	return c.Process(input, options.Out, options.GhostURL, cfg)
 }
