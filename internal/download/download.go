@@ -70,7 +70,6 @@ func (d *Downloader) worker(ctx context.Context) {
 
 func (d *Downloader) process(ctx context.Context, j job) {
 	err := d.fetchAsset(ctx, j)
-
 	if err != nil {
 		fail := Failure{
 			RemoteURL: j.remoteURL,

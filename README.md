@@ -56,7 +56,3 @@ internal/download/    concurrent asset download worker pool
 internal/ghost/       Ghost export parsing and source data model
 internal/zola/        generated Zola post model and Markdown rendering
 ```
-
-## License
-
-[MIT](./LICENSE) © 2026

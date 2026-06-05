@@ -94,18 +94,20 @@ CLI value when a Ghost-hosted placeholder or site-relative reference is present
 placeholders and relative paths into fetchable URLs.
 _Avoid_: base URL, site URL, host
 
-**Image reference**:
-An unresolved image location found in a Post — its Feature image, social images,
-or an `<img src>` in the Markdown body. A reference is _Ghost-hosted_ when it is a
-`__GHOST_URL__` placeholder, a site-relative path, or an absolute URL whose origin
-is the Ghost URL; otherwise it is _external_. Only Ghost-hosted references are
-downloaded and rewritten.
-_Avoid_: image URL, src, link
+**Asset reference**:
+An unresolved media location attached to a Post, such as a Feature image, Social
+image, body image, or body embedded audio/video.
+_Avoid_: image reference, asset URL, media URL, src, link
+
+**Ghost-hosted asset reference**:
+An Asset reference stored on the Ghost site, represented by a `__GHOST_URL__`
+placeholder, a site-relative path, or an absolute URL whose origin is the Ghost
+URL.
+_Avoid_: local asset, hosted URL
 
 **Downloaded asset**:
-An image file fetched from a resolved Ghost-hosted Image reference and written
-into the Post's Post bundle, beside `index.md`, that the reference is rewritten to
-point at. External references yield no asset and are left untouched.
+The file fetched from a resolved Ghost-hosted Asset reference and written into
+the Post's Post bundle.
 _Avoid_: attachment, media, download, colocated file
 
 ## Relationships
@@ -116,6 +118,8 @@ _Avoid_: attachment, media, download, colocated file
   though Ghost's API nests related resources inside the Post.
 - A **Post**'s **Slug** becomes the directory name for its generated
   **Post bundle**.
+- A **Post** may have zero or more **Asset references**.
+- A **Ghost-hosted asset reference** may produce one **Downloaded asset**.
 - A **Tag name** becomes the generated taxonomy value; a Tag's slug remains a
   source identifier.
 - Each **Markdown** file has **Front matter** derived from a **Post**'s metadata,

@@ -15,29 +15,29 @@ import (
 
 const ghostURLPlaceholder = "__GHOST_URL__"
 
-type imageCandidate struct {
+type assetCandidate struct {
 	src  string
-	kind zola.ImageKind
+	kind zola.AssetKind
 }
 
-// processImages resolves Ghost-hosted image references in post, rewrites body
+// processAssets resolves Ghost-hosted asset references in post, rewrites body
 // HTML in a single DOM parse, and returns the rewritten HTML and planned assets.
 // base is the parsed Ghost URL; pass nil when --ghost-url was not provided. If a
 // Ghost-hosted reference is encountered with nil base, an error naming the post
 // and reference is returned. Assets are deduplicated by resolved remote URL;
 // order is first-seen stable.
-func processImages(post ghost.Post, base *url.URL) (rewrittenHTML string, assets []zola.ImageAsset, err error) {
-	// Parse the body HTML once. We collect srcs, rewrite, and render from the same DOM.
+func processAssets(post ghost.Post, base *url.URL) (rewrittenHTML string, assets []zola.Asset, err error) {
+	// Parse the body HTML once. We collect references, rewrite, and render from the same DOM.
 	ctx := &html.Node{Type: html.ElementNode, DataAtom: atom.Body, Data: "body"}
 	nodes, _ := html.ParseFragment(strings.NewReader(post.HTML), ctx)
 
-	candidates := []imageCandidate{
-		{post.FeatureImage, zola.ImageKindFeature},
-		{post.OGImage, zola.ImageKindOpenGraph},
-		{post.TwitterImage, zola.ImageKindTwitter},
+	candidates := []assetCandidate{
+		{src: post.FeatureImage, kind: zola.AssetKindFeatureImage},
+		{src: post.OGImage, kind: zola.AssetKindOpenGraphImage},
+		{src: post.TwitterImage, kind: zola.AssetKindTwitterImage},
 	}
 	for _, n := range nodes {
-		collectImgCandidates(n, &candidates)
+		collectAssetCandidates(n, false, &candidates)
 	}
 
 	// Validate upfront: Ghost-hosted refs require a base URL.
@@ -47,12 +47,12 @@ func processImages(post ghost.Post, base *url.URL) (rewrittenHTML string, assets
 				continue
 			}
 			if _, isGhost := resolveGhostRef(c.src, nil); isGhost {
-				return "", nil, fmt.Errorf("process images for %q: Ghost-hosted reference %q requires --ghost-url", post.Slug, c.src)
+				return "", nil, fmt.Errorf("process assets for %q: Ghost-hosted reference %q requires --ghost-url", post.Slug, c.src)
 			}
 		}
 	}
 
-	// Resolve Ghost-hosted candidates into assets and a src→localPath lookup.
+	// Resolve Ghost-hosted candidates into assets and a src-to-local-path lookup.
 	seen := make(map[string]struct{})
 	remoteToLocal := make(map[string]string)
 	for _, c := range candidates {
@@ -69,16 +69,16 @@ func processImages(post ghost.Post, base *url.URL) (rewrittenHTML string, assets
 		seen[remote] = struct{}{}
 		lp := localPath(remote)
 		remoteToLocal[remote] = lp
-		assets = append(assets, zola.ImageAsset{
+		assets = append(assets, zola.Asset{
 			RemoteURL: remote,
 			LocalPath: lp,
 			Kind:      c.kind,
 		})
 	}
 
-	// Rewrite Ghost-hosted img srcs to local paths in the already-parsed DOM.
+	// Rewrite Ghost-hosted body asset references to local paths in the already-parsed DOM.
 	for _, n := range nodes {
-		rewriteImgSrcs(n, base, remoteToLocal)
+		rewriteAssetRefs(n, false, base, remoteToLocal)
 	}
 
 	// Render the DOM once.
@@ -188,39 +188,104 @@ func localPath(remoteURL string) string {
 	hash := fmt.Sprintf("%x", sum[:4]) // 4 bytes = 8 hex chars
 	u, err := url.Parse(remoteURL)
 	if err != nil {
-		return fmt.Sprintf("%s-image", hash)
+		return fmt.Sprintf("%s-asset", hash)
 	}
 	base := path.Base(u.Path)
 	if base == "." || base == "/" {
-		return fmt.Sprintf("%s-image", hash)
+		return fmt.Sprintf("%s-asset", hash)
 	}
 	return fmt.Sprintf("%s-%s", hash, base)
 }
 
-func collectImgCandidates(node *html.Node, candidates *[]imageCandidate) {
-	if node.Type == html.ElementNode && node.Data == "img" {
-		if src := htmlAttr(node, "src"); src != "" {
-			*candidates = append(*candidates, imageCandidate{src, zola.ImageKindBody})
-		}
-	}
-	for child := range node.ChildNodes() {
-		collectImgCandidates(child, candidates)
-	}
-}
-
-func rewriteImgSrcs(node *html.Node, base *url.URL, remoteToLocal map[string]string) {
-	if node.Type == html.ElementNode && node.Data == "img" {
-		for i, attr := range node.Attr {
-			if attr.Key == "src" {
-				if local := lookupLocal(attr.Val, base, remoteToLocal); local != attr.Val {
-					node.Attr[i].Val = local
+func collectAssetCandidates(
+	node *html.Node,
+	insideMedia bool,
+	candidates *[]assetCandidate,
+) {
+	if node.Type == html.ElementNode {
+		switch node.Data {
+		case "img":
+			if src := htmlAttr(node, "src"); src != "" {
+				*candidates = append(*candidates, assetCandidate{src: src, kind: zola.AssetKindBodyImage})
+			}
+		case "audio":
+			insideMedia = true
+			if src := htmlAttr(node, "src"); src != "" {
+				*candidates = append(*candidates, assetCandidate{src: src, kind: zola.AssetKindBodyAudio})
+			}
+		case "video":
+			insideMedia = true
+			if src := htmlAttr(node, "src"); src != "" {
+				*candidates = append(*candidates, assetCandidate{src: src, kind: zola.AssetKindBodyVideo})
+			}
+			if poster := htmlAttr(node, "poster"); poster != "" {
+				*candidates = append(*candidates, assetCandidate{src: poster, kind: zola.AssetKindBodyVideoPoster})
+			}
+		case "source":
+			if insideMedia {
+				if src := htmlAttr(node, "src"); src != "" {
+					*candidates = append(*candidates, assetCandidate{src: src, kind: zola.AssetKindBodyMediaSource})
 				}
-				break
+			}
+		case "track":
+			if insideMedia {
+				if src := htmlAttr(node, "src"); src != "" {
+					*candidates = append(*candidates, assetCandidate{src: src, kind: zola.AssetKindBodyMediaTrack})
+				}
 			}
 		}
 	}
 	for child := range node.ChildNodes() {
-		rewriteImgSrcs(child, base, remoteToLocal)
+		collectAssetCandidates(child, insideMedia, candidates)
+	}
+}
+
+func rewriteAssetRefs(
+	node *html.Node,
+	insideMedia bool,
+	base *url.URL,
+	remoteToLocal map[string]string,
+) {
+	if node.Type == html.ElementNode {
+		switch node.Data {
+		case "img":
+			rewriteAssetAttr(node, "src", base, remoteToLocal)
+		case "audio":
+			insideMedia = true
+			rewriteAssetAttr(node, "src", base, remoteToLocal)
+		case "video":
+			insideMedia = true
+			rewriteAssetAttr(node, "src", base, remoteToLocal)
+			rewriteAssetAttr(node, "poster", base, remoteToLocal)
+		case "source":
+			if insideMedia {
+				rewriteAssetAttr(node, "src", base, remoteToLocal)
+			}
+		case "track":
+			if insideMedia {
+				rewriteAssetAttr(node, "src", base, remoteToLocal)
+			}
+		}
+	}
+	for child := range node.ChildNodes() {
+		rewriteAssetRefs(child, insideMedia, base, remoteToLocal)
+	}
+}
+
+func rewriteAssetAttr(
+	node *html.Node,
+	key string,
+	base *url.URL,
+	remoteToLocal map[string]string,
+) {
+	for i, attr := range node.Attr {
+		if attr.Key != key {
+			continue
+		}
+		if local := lookupLocal(attr.Val, base, remoteToLocal); local != attr.Val {
+			node.Attr[i].Val = local
+		}
+		return
 	}
 }
 

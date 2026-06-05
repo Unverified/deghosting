@@ -1,10 +1,11 @@
 # Download Post assets and rewrite references into the bundle
 
 Deghosting fetches every **Ghost-hosted** asset a Post references — its Feature
-image, Social images (`og_image`, `twitter_image`), and body `<img>` tags — into
-the Post's page bundle as a Downloaded asset, and rewrites those references to
-point at the colocated file so the content no longer depends on the live Ghost
-host. References to **external** (third-party) hosts are left untouched.
+image, Social images (`og_image`, `twitter_image`), body `<img>` tags, and body
+audio/video media — into the Post's page bundle as a Downloaded asset, and
+rewrites those references to point at the colocated file so the content no longer
+depends on the live Ghost host. References to **external** (third-party) hosts
+are left untouched.
 
 ## Decisions
 
@@ -16,13 +17,25 @@ host. References to **external** (third-party) hosts are left untouched.
   it is a `__GHOST_URL__` placeholder, a site-relative path, or an absolute URL
   whose origin equals the Ghost URL. Only these are downloaded and rewritten;
   references to other hosts (including a separate CDN domain) are left as-is.
+  Body media collection is limited to native media-bearing attributes:
+  `<img src>`, `<audio src>`, `<video src>`, `<video poster>`, `<source src>`,
+  and `<track src>`. `srcset` is intentionally ignored; the target site can
+  regenerate responsive variants from the primary image.
+- **Preserve body audio/video as raw HTML.** Markdown has no equivalent for
+  `<audio>`, `<video>`, `<source>`, or `<track>`, so body audio/video embeds are
+  kept as raw HTML in the Markdown body whether their sources are Ghost-hosted or
+  external. Ghost-hosted references inside them are rewritten before rendering; external
+  references remain untouched. A `<figure>` that contains audio/video is also
+  preserved as raw HTML so captions and Ghost card classes survive. Ordinary body
+  images continue to convert to Markdown images.
 - **Offline-first rewrite, then download.** Each Ghost-hosted reference is resolved
   against the Ghost URL to a remote URL and a deterministic local path of the form
   `<hash>-<basename>` (hash = a short SHA-256 prefix of the resolved URL,
-  extension taken from the URL). References are rewritten to those local paths
-  inside the parsed HTML DOM *before* HTML→Markdown conversion (and in the
-  front-matter extras), so conversion never blocks on the network. Downloading is
-  a separate stage. The same resolved URL within one Post dedupes to one file.
+  basename taken from the URL path; fallback `<hash>-asset` when the URL has no
+  usable basename). References are rewritten to those local paths inside the
+  parsed HTML DOM *before* HTML→Markdown conversion (and in the front-matter
+  extras), so conversion never blocks on the network. Downloading is a separate
+  stage. The same resolved URL within one Post dedupes to one file.
 - **Retry then warn; references stay local on failure.** Each download is
   attempted up to three times. A permanent failure is surfaced as a warning and
   the already-rewritten local reference stays dangling, rather than aborting the

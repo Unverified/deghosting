@@ -9,9 +9,12 @@ import (
 	"slices"
 	"strings"
 
-	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/base"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/commonmark"
 	"github.com/Unverified/deghosting/internal/ghost"
 	"github.com/Unverified/deghosting/internal/zola"
+	"golang.org/x/net/html"
 )
 
 // ConvertResult summarizes one conversion run.
@@ -49,7 +52,7 @@ func (w Warning) String() string {
 
 // Convert parses a Ghost export from input and converts it to Zola posts.
 // ghostURL is the site origin that replaces the __GHOST_URL__ placeholder in
-// image references; it is required only when Ghost-hosted image references are
+// asset references; it is required only when Ghost-hosted asset references are
 // present.
 func Convert(input io.Reader, ghostURL string) (ConvertResult, error) {
 	export, err := ghost.Parse(input)
@@ -165,7 +168,7 @@ func (c *exportConverter) convertPost(post ghost.Post) (zola.Post, error) {
 		return zola.Post{}, err
 	}
 
-	rewrittenHTML, assets, err := processImages(post, c.base)
+	rewrittenHTML, assets, err := processAssets(post, c.base)
 	if err != nil {
 		return zola.Post{}, err
 	}
@@ -175,7 +178,7 @@ func (c *exportConverter) convertPost(post ghost.Post) (zola.Post, error) {
 		remoteToLocal[a.RemoteURL] = a.LocalPath
 	}
 
-	body, err := htmltomarkdown.ConvertString(rewrittenHTML)
+	body, err := convertBodyHTML(rewrittenHTML)
 	if err != nil {
 		return zola.Post{}, fmt.Errorf("convert HTML for %q: %w", post.Slug, err)
 	}
@@ -199,6 +202,39 @@ func (c *exportConverter) convertPost(post ghost.Post) (zola.Post, error) {
 		Body:   strings.TrimSpace(body),
 		Assets: assets,
 	}, nil
+}
+
+func convertBodyHTML(input string) (string, error) {
+	conv := converter.NewConverter(
+		converter.WithPlugins(
+			base.NewBasePlugin(),
+			commonmark.NewCommonmarkPlugin(),
+		),
+	)
+	conv.Register.RendererFor("audio", converter.TagTypeBlock, base.RenderAsHTML, converter.PriorityEarly)
+	conv.Register.RendererFor("video", converter.TagTypeBlock, base.RenderAsHTML, converter.PriorityEarly)
+	conv.Register.RendererFor("figure", converter.TagTypeBlock, renderMediaFigureHTML, converter.PriorityEarly)
+
+	return conv.ConvertString(input)
+}
+
+func renderMediaFigureHTML(ctx converter.Context, w converter.Writer, node *html.Node) converter.RenderStatus {
+	if !containsNativeMedia(node) {
+		return converter.RenderTryNext
+	}
+	return base.RenderAsHTML(ctx, w, node)
+}
+
+func containsNativeMedia(node *html.Node) bool {
+	if node.Type == html.ElementNode && (node.Data == "audio" || node.Data == "video") {
+		return true
+	}
+	for child := range node.ChildNodes() {
+		if containsNativeMedia(child) {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *exportConverter) description(post ghost.Post) string {

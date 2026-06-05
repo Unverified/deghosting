@@ -11,15 +11,15 @@ type Post struct {
 	Slug        string
 	FrontMatter FrontMatter
 	Body        string
-	Assets      []ImageAsset
+	Assets      []Asset
 }
 
-// ImageAsset is a Ghost-hosted image reference resolved to a remote URL and the
-// local path it is rewritten to, relative to the post bundle.
-type ImageAsset struct {
+// Asset is a Ghost-hosted asset reference resolved to a remote URL and the local
+// path it is rewritten to, relative to the post bundle.
+type Asset struct {
 	RemoteURL string
 	LocalPath string // e.g. "b58f0c2e-photo.jpg", relative to index.md
-	Kind      ImageKind
+	Kind      AssetKind
 }
 
 // BundleDir returns the post's bundle directory relative to the content root.
@@ -65,19 +65,24 @@ func (e Extra) IsZero() bool {
 	return e.FeatureImage == "" && e.OGImage == "" && e.TwitterImage == ""
 }
 
-// ImageRef is an unresolved image reference found while modeling a post.
-type ImageRef struct {
+// AssetRef is an unresolved asset reference found while modeling a post.
+type AssetRef struct {
 	Source string
-	Kind   ImageKind
+	Kind   AssetKind
 }
 
-// ImageKind identifies where an image reference came from in a Ghost post.
-type ImageKind int
+// AssetKind identifies where an asset reference came from in a Ghost post.
+type AssetKind int
 
 const (
-	ImageKindUnknown ImageKind = iota
-	ImageKindFeature
-	ImageKindBody
-	ImageKindOpenGraph
-	ImageKindTwitter
+	AssetKindUnknown AssetKind = iota
+	AssetKindFeatureImage
+	AssetKindBodyImage
+	AssetKindOpenGraphImage
+	AssetKindTwitterImage
+	AssetKindBodyAudio
+	AssetKindBodyVideo
+	AssetKindBodyVideoPoster
+	AssetKindBodyMediaSource
+	AssetKindBodyMediaTrack
 )

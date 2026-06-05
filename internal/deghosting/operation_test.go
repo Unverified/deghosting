@@ -97,7 +97,7 @@ func TestOperationProcessReportsDownloadFailures(t *testing.T) {
 	assetURL := "https://example.com/img.jpg"
 	post := zola.Post{
 		Slug:   "hello-world",
-		Assets: []zola.ImageAsset{{RemoteURL: assetURL, LocalPath: "abc-img.jpg"}},
+		Assets: []zola.Asset{{RemoteURL: assetURL, LocalPath: "abc-img.jpg"}},
 	}
 
 	var stdout bytes.Buffer
@@ -133,7 +133,7 @@ func TestOperationProcessSubmitsAssetsToDownloader(t *testing.T) {
 	}
 	post := zola.Post{
 		Slug:   "hello-world",
-		Assets: []zola.ImageAsset{{RemoteURL: assetURL, LocalPath: "abc-img.jpg"}},
+		Assets: []zola.Asset{{RemoteURL: assetURL, LocalPath: "abc-img.jpg"}},
 	}
 
 	var stub stubDownloader
@@ -157,11 +157,11 @@ func TestOperationProcessReportsFailedDuplicateURLWithOwningPost(t *testing.T) {
 	posts := []zola.Post{
 		{
 			Slug:   "first-post",
-			Assets: []zola.ImageAsset{{RemoteURL: assetURL, LocalPath: "first-img.jpg"}},
+			Assets: []zola.Asset{{RemoteURL: assetURL, LocalPath: "first-img.jpg"}},
 		},
 		{
 			Slug:   "second-post",
-			Assets: []zola.ImageAsset{{RemoteURL: assetURL, LocalPath: "second-img.jpg"}},
+			Assets: []zola.Asset{{RemoteURL: assetURL, LocalPath: "second-img.jpg"}},
 		},
 	}
 	failure := download.Failure{
