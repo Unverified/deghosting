@@ -81,6 +81,47 @@ func TestConvertExportPopulatesAssets(t *testing.T) {
 	}
 }
 
+func TestConvertExportRejectsInvalidGhostURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		ghostURL string
+	}{
+		{name: "missing scheme", ghostURL: "blog.example.com"},
+		{name: "unsupported scheme", ghostURL: "ftp://blog.example.com"},
+		{name: "path", ghostURL: "https://blog.example.com/content"},
+		{name: "query", ghostURL: "https://blog.example.com?preview=true"},
+		{name: "fragment", ghostURL: "https://blog.example.com#images"},
+		{name: "user info", ghostURL: "https://user:pass@blog.example.com"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			export := parseExportFixture(t, "published-posts.json")
+			result, err := deghosting.ConvertExport(export, tc.ghostURL)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "invalid ghost URL")
+			require.Empty(t, result.Posts)
+		})
+	}
+}
+
+func TestConvertExportAcceptsGhostOriginWithTrailingSlash(t *testing.T) {
+	t.Parallel()
+
+	export := parseExportFixture(t, "published-posts.json")
+
+	result, err := deghosting.ConvertExport(export, "https://blog.example.com/")
+
+	require.NoError(t, err)
+	require.Len(t, result.Posts, 1)
+	require.Len(t, result.Posts[0].Assets, 4)
+}
+
 func TestConvertExportUsesMetaDescriptionFallback(t *testing.T) {
 	t.Parallel()
 

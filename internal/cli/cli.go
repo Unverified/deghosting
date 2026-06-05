@@ -3,18 +3,18 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"io"
 	"runtime"
 
+	"github.com/Unverified/deghosting/internal/download"
 	"github.com/alecthomas/kong"
-
-	"github.com/Unverified/deghosting/internal/deghosting"
 )
 
 // ProcessFunc runs the process after the CLI has parsed arguments and
 // resolved the export input stream.
-type ProcessFunc func(export io.Reader, out string, ghostURL string, cfg deghosting.DownloadConfig) error
+type ProcessFunc func(ctx context.Context, export io.Reader, out string, ghostURL string, cfg download.Config) error
 
 // CLI is the wired command-line application.
 type CLI struct {
@@ -26,7 +26,7 @@ type CLI struct {
 
 // Execute parses args and runs the wired process. It never calls os.Exit; the
 // caller maps the returned error to an exit code.
-func (c CLI) Execute(args []string) error {
+func (c CLI) Execute(ctx context.Context, args []string) error {
 	if c.Process == nil {
 		return errors.New("process function is nil")
 	}
@@ -63,15 +63,14 @@ func (c CLI) Execute(args []string) error {
 	}
 	defer func() { _ = input.Close() }()
 
-	concurrency := options.ImageConcurrency
+	concurrency := options.AssetConcurrency
 	if concurrency <= 0 {
 		concurrency = runtime.NumCPU()
 	}
 
-	cfg := deghosting.DownloadConfig{
-		Timeout:     options.ImageTimeout,
+	cfg := download.Config{
 		Concurrency: concurrency,
 	}
 
-	return c.Process(input, options.Out, options.GhostURL, cfg)
+	return c.Process(ctx, input, options.Out, options.GhostURL, cfg)
 }

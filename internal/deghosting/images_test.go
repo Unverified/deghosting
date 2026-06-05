@@ -43,8 +43,18 @@ func TestProcessImagesClassification(t *testing.T) {
 			wantAsset:    true,
 		},
 		{
+			name:         "same host different scheme",
+			featureImage: "http://blog.example.com/content/images/photo.jpg",
+			wantAsset:    false,
+		},
+		{
 			name:         "external host",
 			featureImage: "https://cdn.other.com/photo.jpg",
+			wantAsset:    false,
+		},
+		{
+			name:         "protocol-relative external host",
+			featureImage: "//cdn.other.com/photo.jpg",
 			wantAsset:    false,
 		},
 		{
@@ -244,7 +254,7 @@ func TestProcessImagesGhostURLRequiredOnlyWhenNeeded(t *testing.T) {
 
 		post := ghost.Post{
 			Slug: "my-post",
-			HTML: `<img src="https://external.com/photo.jpg">`,
+			HTML: `<img src="https://external.com/photo.jpg"><img src="//cdn.external.com/photo.jpg">`,
 		}
 		_, assets, err := processImages(post, nil)
 

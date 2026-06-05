@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
-
 	"github.com/Unverified/deghosting/internal/ghost"
 	"github.com/Unverified/deghosting/internal/zola"
 )
@@ -70,7 +69,7 @@ func ConvertExport(export *ghost.Export, ghostURL string) (ConvertResult, error)
 	var base *url.URL
 	if ghostURL != "" {
 		var err error
-		base, err = url.Parse(ghostURL)
+		base, err = parseGhostOrigin(ghostURL)
 		if err != nil {
 			return ConvertResult{}, fmt.Errorf("convert ghost export: invalid ghost URL %q: %w", ghostURL, err)
 		}

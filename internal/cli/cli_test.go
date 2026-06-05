@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -9,10 +10,9 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Unverified/deghosting/internal/cli"
-	"github.com/Unverified/deghosting/internal/deghosting"
+	"github.com/Unverified/deghosting/internal/download"
 	"github.com/stretchr/testify/require"
 )
 
@@ -152,7 +152,7 @@ func TestExecutePassesResolvedInputToProcess(t *testing.T) {
 		Stdin:  cli.InputStream{Reader: strings.NewReader("stdin-data"), IsTerminal: true},
 		Stdout: &stdout,
 		Stderr: io.Discard,
-		Process: func(export io.Reader, out string, _ string, _ deghosting.DownloadConfig) error {
+		Process: func(_ context.Context, export io.Reader, out string, _ string, _ download.Config) error {
 			require.Equal(t, dir, out)
 			got, err := io.ReadAll(export)
 			require.NoError(t, err)
@@ -161,7 +161,7 @@ func TestExecutePassesResolvedInputToProcess(t *testing.T) {
 		},
 	}
 
-	err := command.Execute([]string{"--input", file, "--out", dir, "--force"})
+	err := command.Execute(t.Context(), []string{"--input", file, "--out", dir, "--force"})
 	require.NoError(t, err)
 	require.Empty(t, stdout.String())
 }
@@ -173,49 +173,47 @@ func TestExecutePassesGhostURLToProcess(t *testing.T) {
 		Stdin:  cli.InputStream{Reader: strings.NewReader("data"), IsTerminal: false},
 		Stdout: io.Discard,
 		Stderr: io.Discard,
-		Process: func(_ io.Reader, _ string, ghostURL string, _ deghosting.DownloadConfig) error {
+		Process: func(_ context.Context, _ io.Reader, _ string, ghostURL string, _ download.Config) error {
 			require.Equal(t, "https://blog.example.com", ghostURL)
 			return nil
 		},
 	}
 
-	err := command.Execute([]string{"--ghost-url", "https://blog.example.com"})
+	err := command.Execute(t.Context(), []string{"--ghost-url", "https://blog.example.com"})
 	require.NoError(t, err)
 }
 
-func TestExecuteImageFlagDefaults(t *testing.T) {
+func TestExecuteAssetFlagDefaults(t *testing.T) {
 	t.Parallel()
 
 	command := cli.CLI{
 		Stdin:  cli.InputStream{Reader: strings.NewReader("data"), IsTerminal: false},
 		Stdout: io.Discard,
 		Stderr: io.Discard,
-		Process: func(_ io.Reader, _ string, _ string, cfg deghosting.DownloadConfig) error {
-			require.Equal(t, 10*time.Second, cfg.Timeout)
+		Process: func(_ context.Context, _ io.Reader, _ string, _ string, cfg download.Config) error {
 			require.Equal(t, runtime.NumCPU(), cfg.Concurrency)
 			return nil
 		},
 	}
 
-	err := command.Execute(nil)
+	err := command.Execute(t.Context(), nil)
 	require.NoError(t, err)
 }
 
-func TestExecuteImageFlagOverrides(t *testing.T) {
+func TestExecuteAssetFlagOverrides(t *testing.T) {
 	t.Parallel()
 
 	command := cli.CLI{
 		Stdin:  cli.InputStream{Reader: strings.NewReader("data"), IsTerminal: false},
 		Stdout: io.Discard,
 		Stderr: io.Discard,
-		Process: func(_ io.Reader, _ string, _ string, cfg deghosting.DownloadConfig) error {
-			require.Equal(t, 30*time.Second, cfg.Timeout)
+		Process: func(_ context.Context, _ io.Reader, _ string, _ string, cfg download.Config) error {
 			require.Equal(t, 4, cfg.Concurrency)
 			return nil
 		},
 	}
 
-	err := command.Execute([]string{"--image-timeout", "30s", "--image-concurrency", "4"})
+	err := command.Execute(t.Context(), []string{"--asset-concurrency", "4"})
 	require.NoError(t, err)
 }
 
@@ -227,12 +225,12 @@ func TestExecutePropagatesProcessError(t *testing.T) {
 		Stdin:  cli.InputStream{Reader: strings.NewReader("stdin-data"), IsTerminal: false},
 		Stdout: io.Discard,
 		Stderr: io.Discard,
-		Process: func(io.Reader, string, string, deghosting.DownloadConfig) error {
+		Process: func(context.Context, io.Reader, string, string, download.Config) error {
 			return want
 		},
 	}
 
-	err := command.Execute(nil)
+	err := command.Execute(t.Context(), nil)
 
 	require.ErrorIs(t, err, want)
 }
@@ -244,12 +242,12 @@ func TestExecuteMapsParseErrorsToUsageError(t *testing.T) {
 		Stdin:  cli.InputStream{Reader: strings.NewReader(""), IsTerminal: true},
 		Stdout: io.Discard,
 		Stderr: io.Discard,
-		Process: func(io.Reader, string, string, deghosting.DownloadConfig) error {
+		Process: func(context.Context, io.Reader, string, string, download.Config) error {
 			t.Fatal("process should not be called for parse errors")
 			return nil
 		},
 	}
-	err := command.Execute([]string{"--definitely-not-a-flag"})
+	err := command.Execute(t.Context(), []string{"--definitely-not-a-flag"})
 
 	var usageErr *cli.UsageError
 	require.ErrorAs(t, err, &usageErr)
@@ -272,13 +270,13 @@ func TestExecuteValidatesOutputBeforeProcessing(t *testing.T) {
 		Stdin:  cli.InputStream{Reader: panicReader{}, IsTerminal: false},
 		Stdout: io.Discard,
 		Stderr: io.Discard,
-		Process: func(io.Reader, string, string, deghosting.DownloadConfig) error {
+		Process: func(context.Context, io.Reader, string, string, download.Config) error {
 			t.Fatal("process should not be called when output validation fails")
 			return nil
 		},
 	}
 
-	err := command.Execute([]string{"--out", dir})
+	err := command.Execute(t.Context(), []string{"--out", dir})
 
 	require.Error(t, err)
 }
@@ -288,7 +286,7 @@ func TestExecuteRequiresProcessFunction(t *testing.T) {
 
 	err := cli.CLI{
 		Stdin: cli.InputStream{Reader: strings.NewReader("stdin-data"), IsTerminal: false},
-	}.Execute(nil)
+	}.Execute(t.Context(), nil)
 
 	require.ErrorContains(t, err, "process function is nil")
 }

@@ -7,11 +7,10 @@ import (
 	"path"
 	"strings"
 
-	"golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
-
 	"github.com/Unverified/deghosting/internal/ghost"
 	"github.com/Unverified/deghosting/internal/zola"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 const ghostURLPlaceholder = "__GHOST_URL__"
@@ -44,7 +43,10 @@ func processImages(post ghost.Post, base *url.URL) (rewrittenHTML string, assets
 	// Validate upfront: Ghost-hosted refs require a base URL.
 	if base == nil {
 		for _, c := range candidates {
-			if c.src != "" && isGhostRef(c.src) {
+			if c.src == "" {
+				continue
+			}
+			if _, isGhost := resolveGhostRef(c.src, nil); isGhost {
 				return "", nil, fmt.Errorf("process images for %q: Ghost-hosted reference %q requires --ghost-url", post.Slug, c.src)
 			}
 		}
@@ -106,36 +108,77 @@ func lookupLocal(src string, base *url.URL, remoteToLocal map[string]string) str
 	return src
 }
 
-// isGhostRef reports whether src is Ghost-hosted based on its prefix alone,
-// without resolving it. It detects __GHOST_URL__ placeholders and site-relative
-// paths. Absolute URLs require a base URL for host comparison and always return
-// false here; use resolveGhostRef for full classification.
-func isGhostRef(src string) bool {
-	return strings.HasPrefix(src, ghostURLPlaceholder) || strings.HasPrefix(src, "/")
-}
-
 // resolveGhostRef classifies src and, if Ghost-hosted, returns its resolved
-// remote URL. For placeholder and site-relative srcs, base must be non-nil;
-// callers must guarantee this via the upfront isGhostRef check in processImages.
+// remote URL. For placeholder and site-relative srcs, a nil base still reports
+// isGhost so callers can require --ghost-url without risking a panic.
 func resolveGhostRef(src string, base *url.URL) (remote string, isGhost bool) {
 	if strings.HasPrefix(src, ghostURLPlaceholder) {
+		if base == nil {
+			return "", true
+		}
 		return base.String() + src[len(ghostURLPlaceholder):], true
 	}
-	if strings.HasPrefix(src, "/") {
-		ref, err := url.Parse(src)
-		if err != nil {
-			return "", false
+
+	ref, err := url.Parse(src)
+	if err != nil {
+		return "", false
+	}
+	if isSiteRelativeRef(src, ref) {
+		if base == nil {
+			return "", true
 		}
 		return base.ResolveReference(ref).String(), true
 	}
-	ref, err := url.Parse(src)
-	if err != nil || (ref.Scheme != "http" && ref.Scheme != "https") {
+
+	if !isHTTPURL(ref) {
 		return "", false
 	}
-	if base != nil && ref.Host == base.Host {
-		return src, true
+	if base != nil && sameOrigin(ref, base) {
+		return ref.String(), true
 	}
 	return "", false
+}
+
+func parseGhostOrigin(raw string) (*url.URL, error) {
+	origin, err := url.Parse(raw)
+	if err != nil {
+		return nil, err
+	}
+	if !isHTTPURL(origin) {
+		return nil, fmt.Errorf("must be an http or https origin")
+	}
+	if origin.User != nil {
+		return nil, fmt.Errorf("must not include user info")
+	}
+	if origin.Path != "" && origin.Path != "/" {
+		return nil, fmt.Errorf("must not include a path")
+	}
+	if origin.RawQuery != "" {
+		return nil, fmt.Errorf("must not include a query")
+	}
+	if origin.Fragment != "" {
+		return nil, fmt.Errorf("must not include a fragment")
+	}
+
+	origin.Path = ""
+	origin.RawPath = ""
+	origin.ForceQuery = false
+	return origin, nil
+}
+
+func isSiteRelativeRef(src string, ref *url.URL) bool {
+	return strings.HasPrefix(src, "/") &&
+		!strings.HasPrefix(src, "//") &&
+		ref.Scheme == "" &&
+		ref.Host == ""
+}
+
+func isHTTPURL(ref *url.URL) bool {
+	return ref.Host != "" && (ref.Scheme == "http" || ref.Scheme == "https")
+}
+
+func sameOrigin(ref, base *url.URL) bool {
+	return ref.Scheme == base.Scheme && strings.EqualFold(ref.Host, base.Host)
 }
 
 // localPath computes the deterministic bundle-relative filename for remoteURL:

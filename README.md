@@ -26,7 +26,7 @@ just install         # install into $GOBIN / $GOPATH/bin
 ## Development
 
 ```sh
-just fmt        # format with the golangci-lint formatters (gofumpt + goimports)
+just fmt        # format with golangci-lint formatters (gofumpt + goimports)
 just fmt-check  # show formatting diffs without writing
 just lint       # run golangci-lint
 just test       # run the test suite
@@ -49,8 +49,12 @@ shared state, or I/O-heavy code.
 ## Project layout
 
 ```
-cmd/deghosting/ CLI entrypoint
-internal/cli/   CLI parsing and execution boundary
+cmd/deghosting/       CLI entrypoint
+internal/cli/         CLI parsing and input/output validation
+internal/deghosting/  conversion orchestration and Ghost-to-Zola workflow
+internal/download/    concurrent asset download worker pool
+internal/ghost/       Ghost export parsing and source data model
+internal/zola/        generated Zola post model and Markdown rendering
 ```
 
 ## License

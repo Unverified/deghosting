@@ -6,20 +6,16 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"time"
 )
 
 // Options describes the deghosting command line.
 type Options struct {
-	Input string `short:"i" name:"input" help:"Ghost export JSON file, or '-' for stdin."`
-	Out   string `short:"o" name:"out" default:"content" help:"Output content directory."`
-	Force bool   `short:"f" name:"force" help:"Allow writing into a non-empty output directory."`
-
-	GhostURL         string        `name:"ghost-url" help:"Ghost site origin (e.g. https://blog.example.com), required when the export contains Ghost-hosted image references."`
-	ImageTimeout     time.Duration `name:"image-timeout" default:"10s" help:"Per-request timeout for image downloads."`
-	ImageConcurrency int           `name:"image-concurrency" help:"Number of concurrent image downloads (default: number of logical CPUs)."`
-
-	ExportJSON []string `arg:"" optional:"" name:"export.json" help:"Ghost export JSON file."`
+	Input            string   `short:"i" name:"input" help:"Ghost export JSON file, or '-' for stdin."`
+	Out              string   `short:"o" name:"out" default:"content" help:"Output content directory."`
+	Force            bool     `short:"f" name:"force" help:"Allow writing into a non-empty output directory."`
+	GhostURL         string   `name:"ghost-url" help:"Ghost site origin (e.g. https://blog.example.com), required when the export contains Ghost-hosted asset references."`
+	AssetConcurrency int      `name:"asset-concurrency" help:"Number of concurrent asset downloads (default: number of logical CPUs)."`
+	ExportJSON       []string `arg:"" optional:"" name:"export.json" help:"Ghost export JSON file."`
 }
 
 // InputStream is the command's stdin plus the terminal state needed to decide

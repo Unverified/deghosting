@@ -89,8 +89,9 @@ _Avoid_: SSG, site builder
 **Ghost URL**:
 The site origin that Ghost substitutes for the `__GHOST_URL__` placeholder it
 writes into exported image URLs and site-relative paths. Deghosting takes it as a
-required CLI value (no value is reliably present in the export to fall back to)
-and uses it to turn placeholders and relative paths into fetchable URLs.
+CLI value when a Ghost-hosted placeholder or site-relative reference is present
+(no value is reliably present in the export to fall back to) and uses it to turn
+placeholders and relative paths into fetchable URLs.
 _Avoid_: base URL, site URL, host
 
 **Image reference**:
