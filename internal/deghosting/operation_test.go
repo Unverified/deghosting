@@ -42,7 +42,7 @@ func TestOperationProcessReportsWarningsSkippedAndSummary(t *testing.T) {
 	err := Operation{
 		Stdout: &stdout,
 		Stderr: &stderr,
-		convert: func(got io.Reader) (ConvertResult, error) {
+		convert: func(got io.Reader, _ string) (ConvertResult, error) {
 			require.Same(t, input, got)
 			return result, nil
 		},
@@ -51,7 +51,7 @@ func TestOperationProcessReportsWarningsSkippedAndSummary(t *testing.T) {
 			require.Equal(t, posts, gotPosts)
 			return nil
 		},
-	}.Process(input, out)
+	}.Process(input, out, "")
 
 	require.NoError(t, err)
 	require.Contains(t, stdout.String(), "1 posts converted")
@@ -69,14 +69,14 @@ func TestOperationProcessReturnsConvertError(t *testing.T) {
 	writeCalled := false
 
 	err := Operation{
-		convert: func(io.Reader) (ConvertResult, error) {
+		convert: func(io.Reader, string) (ConvertResult, error) {
 			return ConvertResult{}, convertErr
 		},
 		writePosts: func(string, []zola.Post) error {
 			writeCalled = true
 			return nil
 		},
-	}.Process(strings.NewReader("ghost export"), "content")
+	}.Process(strings.NewReader("ghost export"), "content", "")
 
 	require.ErrorIs(t, err, convertErr)
 	require.False(t, writeCalled)
@@ -89,7 +89,7 @@ func TestOperationProcessReturnsWriteError(t *testing.T) {
 	post := zola.Post{Slug: "hello-world"}
 
 	err := Operation{
-		convert: func(io.Reader) (ConvertResult, error) {
+		convert: func(io.Reader, string) (ConvertResult, error) {
 			return ConvertResult{
 				Posts: []zola.Post{post},
 			}, nil
@@ -99,7 +99,7 @@ func TestOperationProcessReturnsWriteError(t *testing.T) {
 			require.Equal(t, []zola.Post{post}, posts)
 			return writeErr
 		},
-	}.Process(strings.NewReader("ghost export"), "content")
+	}.Process(strings.NewReader("ghost export"), "content", "")
 
 	require.ErrorIs(t, err, writeErr)
 }

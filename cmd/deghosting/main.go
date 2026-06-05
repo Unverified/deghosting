@@ -25,15 +25,16 @@ func run(
 	stdout io.Writer,
 	stderr io.Writer,
 ) int {
-	command := cli.CLI{
-		Stdin:  stdin,
+	op := deghosting.Operation{
 		Stdout: stdout,
 		Stderr: stderr,
+	}
 
-		Process: deghosting.Operation{
-			Stdout: stdout,
-			Stderr: stderr,
-		}.Process,
+	command := cli.CLI{
+		Stdin:   stdin,
+		Stdout:  stdout,
+		Stderr:  stderr,
+		Process: op.Process,
 	}
 
 	err := command.Execute(args)

@@ -7,16 +7,17 @@ import (
 
 	"github.com/Unverified/deghosting/internal/deghosting"
 	"github.com/Unverified/deghosting/internal/ghost"
-	"github.com/Unverified/deghosting/internal/zola"
 	"github.com/stretchr/testify/require"
 )
+
+const convertTestGhostURL = "https://blog.example.com"
 
 func TestConvertExportConvertsPublishedPosts(t *testing.T) {
 	t.Parallel()
 
 	export := parseExportFixture(t, "published-posts.json")
 
-	result, err := deghosting.ConvertExport(export)
+	result, err := deghosting.ConvertExport(export, convertTestGhostURL)
 	require.NoError(t, err)
 	require.ElementsMatch(t, []deghosting.SkippedPost{
 		{Slug: "draft", Reason: "not published"},
@@ -27,22 +28,57 @@ func TestConvertExportConvertsPublishedPosts(t *testing.T) {
 
 	post := result.Posts[0]
 	require.Equal(t, "hello-world", post.Slug)
-	require.Contains(t, post.Body, "**Ghost**")
-	require.Equal(t, zola.FrontMatter{
-		Title:       `Hello "World"`,
-		Date:        post.FrontMatter.Date,
-		Description: "A greeting.",
-		Authors:     []string{"Ada Lovelace", "Grace Hopper"},
-		Taxonomies: zola.Taxonomies{
-			Tags: []string{"Announcements", "Adopters"},
-		},
-		Extra: zola.Extra{
-			FeatureImage: "__GHOST_URL__/feature.png",
-		},
-	}, post.FrontMatter)
 	require.Equal(t, "2020-05-19T12:03:00Z", post.FrontMatter.Date.Format("2006-01-02T15:04:05Z07:00"))
-	// Assets are populated in the resolve+plan step; empty until then.
-	require.Empty(t, post.Assets)
+	require.Equal(t, `Hello "World"`, post.FrontMatter.Title)
+	require.Equal(t, "A greeting.", post.FrontMatter.Description)
+	require.Equal(t, []string{"Ada Lovelace", "Grace Hopper"}, post.FrontMatter.Authors)
+	require.Equal(t, []string{"Announcements", "Adopters"}, post.FrontMatter.Taxonomies.Tags)
+
+	// Ghost-hosted extras are rewritten to local paths.
+	require.Regexp(t, `^[0-9a-f]{8}-feature\.png$`, post.FrontMatter.Extra.FeatureImage)
+	require.Regexp(t, `^[0-9a-f]{8}-og\.png$`, post.FrontMatter.Extra.OGImage)
+	require.Regexp(t, `^[0-9a-f]{8}-twitter\.png$`, post.FrontMatter.Extra.TwitterImage)
+}
+
+func TestConvertExportRewritesBodyImages(t *testing.T) {
+	t.Parallel()
+
+	export := parseExportFixture(t, "published-posts.json")
+
+	result, err := deghosting.ConvertExport(export, convertTestGhostURL)
+	require.NoError(t, err)
+	require.Len(t, result.Posts, 1)
+
+	post := result.Posts[0]
+
+	// Ghost-hosted body image is rewritten to a local path; placeholder is gone.
+	require.NotContains(t, post.Body, "__GHOST_URL__")
+	require.Regexp(t, `[0-9a-f]{8}-body-1\.png`, post.Body)
+
+	// External body image is left untouched.
+	require.Contains(t, post.Body, "https://example.com/body-2.jpg")
+
+	// Body still has its text content.
+	require.Contains(t, post.Body, "**Ghost**")
+}
+
+func TestConvertExportPopulatesAssets(t *testing.T) {
+	t.Parallel()
+
+	export := parseExportFixture(t, "published-posts.json")
+
+	result, err := deghosting.ConvertExport(export, convertTestGhostURL)
+	require.NoError(t, err)
+	require.Len(t, result.Posts, 1)
+
+	post := result.Posts[0]
+
+	// 4 Ghost-hosted refs: feature, og, twitter, body-1. body-2 is external.
+	require.Len(t, post.Assets, 4)
+	for _, a := range post.Assets {
+		require.NotEmpty(t, a.RemoteURL)
+		require.Regexp(t, `^[0-9a-f]{8}-`, a.LocalPath)
+	}
 }
 
 func TestConvertExportUsesMetaDescriptionFallback(t *testing.T) {
@@ -50,7 +86,7 @@ func TestConvertExportUsesMetaDescriptionFallback(t *testing.T) {
 
 	export := parseExportFixture(t, "meta-description-fallback.json")
 
-	result, err := deghosting.ConvertExport(export)
+	result, err := deghosting.ConvertExport(export, "")
 	require.NoError(t, err)
 	require.Len(t, result.Posts, 1)
 	require.Equal(t, "SEO fallback.", result.Posts[0].FrontMatter.Description)
@@ -62,7 +98,7 @@ func TestConvertExportSkipsPublishedPostWithoutPublishedAt(t *testing.T) {
 
 	export := parseExportFixture(t, "missing-published-at.json")
 
-	result, err := deghosting.ConvertExport(export)
+	result, err := deghosting.ConvertExport(export, "")
 	require.NoError(t, err)
 	require.Empty(t, result.Posts)
 	require.Equal(t, []deghosting.Warning{
@@ -75,7 +111,7 @@ func TestConvertExportRejectsInvalidSlug(t *testing.T) {
 
 	export := parseExportFixture(t, "invalid-slug.json")
 
-	result, err := deghosting.ConvertExport(export)
+	result, err := deghosting.ConvertExport(export, "")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid post slug")
 	require.Empty(t, result.Posts)

@@ -153,7 +153,7 @@ func TestExecutePassesResolvedInputToProcess(t *testing.T) {
 		Stdin:  cli.InputStream{Reader: strings.NewReader(expectInput), IsTerminal: true},
 		Stdout: &stdout,
 		Stderr: io.Discard,
-		Process: func(export io.Reader, out string) error {
+		Process: func(export io.Reader, out string, ghostURL string) error {
 			require.Equal(t, dir, out)
 
 			got, err := io.ReadAll(export)
@@ -177,7 +177,7 @@ func TestExecutePropagatesProcessError(t *testing.T) {
 		Stdin:  cli.InputStream{Reader: strings.NewReader("stdin-data"), IsTerminal: false},
 		Stdout: io.Discard,
 		Stderr: io.Discard,
-		Process: func(io.Reader, string) error {
+		Process: func(io.Reader, string, string) error {
 			return want
 		},
 	}
@@ -194,7 +194,7 @@ func TestExecuteMapsParseErrorsToUsageError(t *testing.T) {
 		Stdin:  cli.InputStream{Reader: strings.NewReader(""), IsTerminal: true},
 		Stdout: io.Discard,
 		Stderr: io.Discard,
-		Process: func(io.Reader, string) error {
+		Process: func(io.Reader, string, string) error {
 			t.Fatal("process should not be called for parse errors")
 			return nil
 		},
@@ -222,7 +222,7 @@ func TestExecuteValidatesOutputBeforeProcessing(t *testing.T) {
 		Stdin:  cli.InputStream{Reader: panicReader{}, IsTerminal: false},
 		Stdout: io.Discard,
 		Stderr: io.Discard,
-		Process: func(io.Reader, string) error {
+		Process: func(io.Reader, string, string) error {
 			t.Fatal("process should not be called when output validation fails")
 			return nil
 		},

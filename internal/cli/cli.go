@@ -11,7 +11,7 @@ import (
 
 // ProcessFunc runs the process after the CLI has parsed arguments and
 // resolved the export input stream.
-type ProcessFunc func(export io.Reader, out string) error
+type ProcessFunc func(export io.Reader, out string, ghostURL string) error
 
 // CLI is the wired command-line application.
 type CLI struct {
@@ -60,5 +60,5 @@ func (c CLI) Execute(args []string) error {
 	}
 	defer func() { _ = input.Close() }()
 
-	return c.Process(input, options.Out)
+	return c.Process(input, options.Out, "")
 }

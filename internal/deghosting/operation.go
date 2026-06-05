@@ -16,13 +16,13 @@ type Operation struct {
 }
 
 type (
-	convertFunc    func(io.Reader) (ConvertResult, error)
+	convertFunc    func(io.Reader, string) (ConvertResult, error)
 	writePostsFunc func(string, []zola.Post) error
 )
 
 // Process converts the Ghost export, writes generated files, and reports
 // warnings and a summary.
-func (o Operation) Process(export io.Reader, out string) error {
+func (o Operation) Process(export io.Reader, out string, ghostURL string) error {
 	stdout := o.Stdout
 	if stdout == nil {
 		stdout = io.Discard
@@ -43,7 +43,7 @@ func (o Operation) Process(export io.Reader, out string) error {
 		write = writePosts
 	}
 
-	result, err := convert(export)
+	result, err := convert(export, ghostURL)
 	if err != nil {
 		return err
 	}

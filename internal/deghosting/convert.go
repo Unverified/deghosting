@@ -4,6 +4,7 @@ package deghosting
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -48,23 +49,36 @@ func (w Warning) String() string {
 }
 
 // Convert parses a Ghost export from input and converts it to Zola posts.
-func Convert(input io.Reader) (ConvertResult, error) {
+// ghostURL is the site origin that replaces the __GHOST_URL__ placeholder in
+// image references; it is required only when Ghost-hosted image references are
+// present.
+func Convert(input io.Reader, ghostURL string) (ConvertResult, error) {
 	export, err := ghost.Parse(input)
 	if err != nil {
 		return ConvertResult{}, err
 	}
 
-	return ConvertExport(export)
+	return ConvertExport(export, ghostURL)
 }
 
 // ConvertExport converts published Ghost posts from export into Zola posts.
-func ConvertExport(export *ghost.Export) (ConvertResult, error) {
+func ConvertExport(export *ghost.Export, ghostURL string) (ConvertResult, error) {
 	if export == nil || len(export.DB) != 1 {
 		return ConvertResult{}, fmt.Errorf("convert ghost export: expected exactly one db entry")
 	}
 
+	var base *url.URL
+	if ghostURL != "" {
+		var err error
+		base, err = url.Parse(ghostURL)
+		if err != nil {
+			return ConvertResult{}, fmt.Errorf("convert ghost export: invalid ghost URL %q: %w", ghostURL, err)
+		}
+	}
+
 	converter := exportConverter{
 		data: export.DB[0].Data,
+		base: base,
 	}
 	converter.index()
 
@@ -73,6 +87,7 @@ func ConvertExport(export *ghost.Export) (ConvertResult, error) {
 
 type exportConverter struct {
 	data ghost.Data
+	base *url.URL // parsed Ghost URL; nil when --ghost-url was not provided
 
 	tagsByID        map[string]ghost.Tag
 	usersByID       map[string]ghost.User
@@ -151,12 +166,22 @@ func (c *exportConverter) convertPost(post ghost.Post) (zola.Post, error) {
 		return zola.Post{}, err
 	}
 
-	body, err := htmltomarkdown.ConvertString(post.HTML)
+	rewrittenHTML, assets, err := processImages(post, c.base)
+	if err != nil {
+		return zola.Post{}, err
+	}
+
+	remoteToLocal := make(map[string]string, len(assets))
+	for _, a := range assets {
+		remoteToLocal[a.RemoteURL] = a.LocalPath
+	}
+
+	body, err := htmltomarkdown.ConvertString(rewrittenHTML)
 	if err != nil {
 		return zola.Post{}, fmt.Errorf("convert HTML for %q: %w", post.Slug, err)
 	}
 
-	res := zola.Post{
+	return zola.Post{
 		Slug: post.Slug,
 		FrontMatter: zola.FrontMatter{
 			Title:       post.Title,
@@ -167,12 +192,14 @@ func (c *exportConverter) convertPost(post ghost.Post) (zola.Post, error) {
 				Tags: c.tagNames(post.ID),
 			},
 			Extra: zola.Extra{
-				FeatureImage: post.FeatureImage,
+				FeatureImage: lookupLocal(post.FeatureImage, c.base, remoteToLocal),
+				OGImage:      lookupLocal(post.OGImage, c.base, remoteToLocal),
+				TwitterImage: lookupLocal(post.TwitterImage, c.base, remoteToLocal),
 			},
 		},
-		Body: strings.TrimSpace(body),
-	}
-	return res, nil
+		Body:   strings.TrimSpace(body),
+		Assets: assets,
+	}, nil
 }
 
 func (c *exportConverter) description(post ghost.Post) string {
