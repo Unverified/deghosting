@@ -21,6 +21,14 @@ are left untouched.
   `<img src>`, `<audio src>`, `<video src>`, `<video poster>`, `<source src>`,
   and `<track src>`. `srcset` is intentionally ignored; the target site can
   regenerate responsive variants from the primary image.
+- **Ghost-hosted Body links become Zola Internal Post links when the target
+  exists.** Body `<a href>` values that point to a converted Post slug are
+  rewritten to Zola's `@/.../index.md` source-content link form so Zola resolves
+  the final public URL at build time. `__GHOST_URL__` placeholders and
+  site-relative links can be rewritten without `--ghost-url`; absolute same-origin
+  links require `--ghost-url` to classify. Query strings are dropped and
+  fragments are preserved. Links that do not match a converted Post are left
+  unchanged and reported as one warning per Post and target.
 - **Preserve body audio/video as raw HTML.** Markdown has no equivalent for
   `<audio>`, `<video>`, `<source>`, or `<track>`, so body audio/video embeds are
   kept as raw HTML in the Markdown body whether their sources are Ghost-hosted or

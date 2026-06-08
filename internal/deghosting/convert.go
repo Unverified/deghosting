@@ -96,6 +96,7 @@ type exportConverter struct {
 	metaByPostID    map[string]ghost.PostMeta
 	tagsByPostID    map[string][]ghost.PostTag
 	authorsByPostID map[string][]ghost.PostAuthor
+	convertedSlugs  map[string]struct{}
 }
 
 func (c *exportConverter) index() {
@@ -122,6 +123,17 @@ func (c *exportConverter) index() {
 	c.authorsByPostID = make(map[string][]ghost.PostAuthor)
 	for _, postAuthor := range c.data.PostsAuthors {
 		c.authorsByPostID[postAuthor.PostID] = append(c.authorsByPostID[postAuthor.PostID], postAuthor)
+	}
+
+	c.convertedSlugs = make(map[string]struct{})
+	for _, post := range c.data.Posts {
+		if post.Type != "post" || post.Status != "published" || post.PublishedAt.IsZero() {
+			continue
+		}
+		if validateSlug(post.Slug) != nil {
+			continue
+		}
+		c.convertedSlugs[post.Slug] = struct{}{}
 	}
 }
 
@@ -153,25 +165,33 @@ func (c *exportConverter) convert() (ConvertResult, error) {
 			continue
 		}
 
-		zolaPost, err := c.convertPost(post)
+		zolaPost, warnings, err := c.convertPost(post)
 		if err != nil {
 			return result, err
 		}
 
+		result.Warnings = append(result.Warnings, warnings...)
 		result.Posts = append(result.Posts, zolaPost)
 	}
 	return result, nil
 }
 
-func (c *exportConverter) convertPost(post ghost.Post) (zola.Post, error) {
+func (c *exportConverter) convertPost(post ghost.Post) (zola.Post, []Warning, error) {
 	if err := validateSlug(post.Slug); err != nil {
-		return zola.Post{}, err
+		return zola.Post{}, nil, err
 	}
 
 	rewrittenHTML, assets, err := processAssets(post, c.base)
 	if err != nil {
-		return zola.Post{}, err
+		return zola.Post{}, nil, err
 	}
+
+	rewrittenHTML, linkWarnings := rewriteBodyLinks(
+		post.Slug,
+		rewrittenHTML,
+		c.base,
+		c.convertedSlugs,
+	)
 
 	remoteToLocal := make(map[string]string, len(assets))
 	for _, a := range assets {
@@ -180,7 +200,7 @@ func (c *exportConverter) convertPost(post ghost.Post) (zola.Post, error) {
 
 	body, err := convertBodyHTML(rewrittenHTML)
 	if err != nil {
-		return zola.Post{}, fmt.Errorf("convert HTML for %q: %w", post.Slug, err)
+		return zola.Post{}, nil, fmt.Errorf("convert HTML for %q: %w", post.Slug, err)
 	}
 
 	return zola.Post{
@@ -201,7 +221,7 @@ func (c *exportConverter) convertPost(post ghost.Post) (zola.Post, error) {
 		},
 		Body:   strings.TrimSpace(body),
 		Assets: assets,
-	}, nil
+	}, linkWarnings, nil
 }
 
 func convertBodyHTML(input string) (string, error) {

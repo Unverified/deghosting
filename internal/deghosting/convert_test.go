@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Unverified/deghosting/internal/deghosting"
 	"github.com/Unverified/deghosting/internal/ghost"
@@ -60,6 +61,53 @@ func TestConvertExportRewritesBodyImages(t *testing.T) {
 
 	// Body still has its text content.
 	require.Contains(t, post.Body, "**Ghost**")
+}
+
+func TestConvertExportRewritesInternalBodyLinks(t *testing.T) {
+	t.Parallel()
+
+	publishedAt := ghost.Time{Time: time.Date(2020, 5, 19, 12, 3, 0, 0, time.UTC)}
+	export := &ghost.Export{
+		DB: []ghost.Database{
+			{
+				Data: ghost.Data{
+					Posts: []ghost.Post{
+						{
+							ID:          "source",
+							Slug:        "source-post",
+							Title:       "Source",
+							HTML:        `<p><a href="__GHOST_URL__/target-post/?utm_source=ghost#section">Target</a> <a href="__GHOST_URL__/missing-post/">Missing</a> <a href="__GHOST_URL__/missing-post/">Missing again</a></p>`,
+							Status:      "published",
+							Type:        "post",
+							PublishedAt: publishedAt,
+						},
+						{
+							ID:          "target",
+							Slug:        "target-post",
+							Title:       "Target",
+							Status:      "published",
+							Type:        "post",
+							PublishedAt: publishedAt,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result, err := deghosting.ConvertExport(export, "")
+
+	require.NoError(t, err)
+	require.Len(t, result.Posts, 2)
+	require.Contains(t, result.Posts[0].Body, "[Target](@/target-post/index.md#section)")
+	require.Contains(t, result.Posts[0].Body, "[Missing](__GHOST_URL__/missing-post/)")
+	require.NotContains(t, result.Posts[0].Body, "utm_source")
+	require.Equal(t, []deghosting.Warning{
+		{
+			PostSlug: "source-post",
+			Message:  "Ghost-hosted body link __GHOST_URL__/missing-post/ does not match a converted post",
+		},
+	}, result.Warnings)
 }
 
 func TestConvertExportPopulatesAssets(t *testing.T) {

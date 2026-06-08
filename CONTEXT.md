@@ -71,6 +71,15 @@ The CommonMark-compatible content after the front matter in a generated Markdown
 file, converted from a Post's rendered HTML.
 _Avoid_: content, body (without "Markdown")
 
+**Body link**:
+A hyperlink inside a Post's Markdown body that points readers to another
+location.
+_Avoid_: asset reference, media link, URL
+
+**Internal Post link**:
+A Body link that points to another converted Post.
+_Avoid_: public URL, asset link, external link
+
 **Post bundle**:
 The generated directory named from a Post's Slug, containing that Post's
 `index.md` file and any colocated assets.
@@ -119,6 +128,8 @@ _Avoid_: attachment, media, download, colocated file
 - A **Post**'s **Slug** becomes the directory name for its generated
   **Post bundle**.
 - A **Post** may have zero or more **Asset references**.
+- A **Post** may have zero or more **Body links**.
+- An **Internal Post link** points to one converted **Post**.
 - A **Ghost-hosted asset reference** may produce one **Downloaded asset**.
 - A **Tag name** becomes the generated taxonomy value; a Tag's slug remains a
   source identifier.
